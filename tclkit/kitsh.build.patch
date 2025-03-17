@@ -1,0 +1,10 @@
+--- build.origin.sh	2024-07-03 14:55:22.869834284 +0200
++++ build.sh	2024-07-03 14:55:32.610148005 +0200
+@@ -125,6 +125,7 @@
+ 	fi
+ 
+ 	# Compile Kit
++    autoconf
+ 	if [ -z "${ZLIBDIR}" ]; then
+ 		echo "Running: ./configure --with-tcl=\"${TCLCONFIGDIR}\" ${CONFIGUREEXTRA}"
+ 

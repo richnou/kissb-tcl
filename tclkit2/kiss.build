@@ -1,0 +1,88 @@
+
+
+
+package require kissb.tclkit
+package require kissb.builder.rclone
+
+#package require Tclx
+#proc mysig args {
+#    puts stdout "Aborting current routine"
+#    exit -1
+#}
+
+#signal error SIGINT 
+#mysig
+
+rclone.init
+
+
+
+
+@ build.starkit {
+
+    #tclkit::buildStarkitWithLibsAndMainFromKit tclkit-8.6.14 testlib teststarkit test.tcl
+    set resultKit [tclkit::buildStarkitWithLibsAndMainFromKit tclkit-8.6.14_notk tclkit-8.6.14_notk.exe testlib teststarkit test.tcl]
+    files.cp $resultKit teststarkit.exe
+
+    set resultKit [tclkit::buildStarkitWithLibsAndMainFromKit tclkit-8.6.14_notk tclkit-8.6.14_notk  testlib teststarkit test.tcl]
+    files.cp $resultKit teststarkit
+}
+
+@ build.kits {
+
+    #puts "args: $args"
+    #kissb.args.contains -s3 {
+    #    puts "pushing"
+    #}
+    #return 
+    set TCL_CONFS {
+        8.6.14_tk       8.6.14 {tk tcllib tclx tdom} {}
+        8.6.14_notk     8.6.14 {tcllib tclx tdom} {}
+        8.6.14_tk_nsf   8.6.14 {tk nsf tcllib tclx tdom} {}
+        8.6.14_notk_nsf 8.6.14 {nsf tcllib tclx tdom} {}
+    }
+    set TCL_CONFS {
+        8.6.14_notk     8.6.14 {tcllib tclx tdom} {}
+    }
+
+    #set TCL_CONFS {
+    #    8.6.14_tk       8.6.14 {tk tcllib} {}
+    #}
+    
+    #set userLibs [list [file normalize tclxml]]
+    set userLibs {}
+    foreach {kitName tclVersion packages buildArgs} ${TCL_CONFS} {
+
+        log.info "Will build KIT $kitName for $tclVersion"
+
+        set buildKit [tclkit::buildTCLKit $kitName $tclVersion [concat $packages {zlib tclvfs tls mk4tcl}] $userLibs {*}$buildArgs]
+        files.cp $buildKit tclkit-$kitName
+        log.info "Available TCL Kit: tclkit-$kitName"
+
+        
+        set buildCCTCLKit [tclkit::buildCCTCLKit $kitName $tclVersion tclkit-$kitName [concat $packages {zlib tclvfs tls mk4tcl}] {} {*}$buildArgs]
+        files.cp $buildCCTCLKit tclkit-${kitName}.exe
+        log.info "Available CC TCL Kit: tclkit-${kitName}.exe"
+
+        kissb.args.contains -s3 {
+            log.info "Pushing..."
+            #rclone.run touch -R --s3-acl=public-read ovhs3:kissb/tclkit/${tclVersion} mk4tcl
+            rclone.run copy --s3-acl=public-read tclkit-$kitName       ovhs3:kissb/tclkit/${tclVersion}/
+            rclone.run copy --s3-acl=public-read tclkit-${kitName}.exe ovhs3:kissb/tclkit/${tclVersion}/
+        }
+        #rclone.run touch -R --s3-acl=public-read ovhs3:kissb/tclkit/${tclVersion} mk4tcl
+        #rclone.run copy --s3-acl=public-read tclkit-$kitName       ovhs3:kissb/tclkit/${tclVersion}/
+        #rclone.run copy --s3-acl=public-read tclkit-${kitName}.exe ovhs3:kissb/tclkit/${tclVersion}/
+    }
+
+}
+
+
+ 
+
+
+#tclkit::buildStarkitWithLibsAndMainFromKit tclkit-8.6.14 testlib teststarkit test.tcl
+
+# Now Crosscompile
+#set CCKit [tclkit::buildCCTCLKit tclkit 8.6.14]
+#files.cp $CCKit tclkit-8.6.14.exe

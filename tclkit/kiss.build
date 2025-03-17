@@ -1,0 +1,76 @@
+
+package require kissb.docker
+package require kissb.builder.podman
+
+
+# Get kit
+files.require kitcreator-trunk-tip/kitcreator {
+    files.download http://kitcreator.rkeene.org/fossil/tarball/kitcreator-trunk-tip.tar.gz?uuid=trunk kitcreator-trunk-tip.tar.gz
+    files.extract kitcreator-trunk-tip.tar.gz
+}
+files.require sdx.kit {
+    exec.run wget --no-check-certificate https://chiselapp.com/user/aspect/repository/sdx/uv/sdx-20110317.kit -O sdx.kit
+
+}
+
+# Prepare builder image
+docker.image.build Dockerfile.builder kissb-tclkitbuilder:latest
+
+
+@ tclkit {
+
+    env KIT_NAME tclkit
+    env TCL_VERSION 8.6.14
+    env KITCREATOR_PKGS "tk tcllib tls zlib tclvfs mk4tcl"
+    env KITCREATOR_USR_PKGS ""
+
+    # Build Tclkit with Kissb
+    files.inDirectory kitcreator-trunk-tip {
+        builder.image.run kissb-tclkitbuilder:latest {
+            export KITCREATOR_PKGS="[concat $::KITCREATOR_PKGS $::KITCREATOR_USR_PKGS]"
+
+            ./kitcreator retry --enable-64bit
+        }
+    }
+}
+
+retry
+
+# Build Tclkit with Kissb
+files.inDirectory kitcreator-trunk-tip {
+    
+    builder.selectDockerRuntime
+
+    # Build Starkit for Kissb entrypoints
+    exec.run ./tclkit-8.6.14 ../sdx.kit qwrap ./kissb/src/kissb-20240703/bin/kissb.tcl
+    # Combine Tclkit with kissb
+    files.delete kissb.vfs
+    exec.run ./tclkit-8.6.14 ../sdx.kit unwrap kissb.kit
+    files.cp ./tclkit-8.6.14 ./tclkit-starkit
+    exec.run ./tclkit-8.6.14 ../sdx.kit wrap kissb.kit -runtime tclkit-starkit
+    files.delete ./tclkit-starkit
+
+    return
+    ## Build Main Kit
+    #./kitcreator clean ./build/pre.sh itcl tk tcllib tls zlib tclvfs mk4tcl // tk tcllib tls zlib tclvfs mk4tcl 
+    builder.image.run kissb-tclkitbuilder:latest {
+export KITCREATOR_PKGS="kissb"
+
+./kitcreator retry --enable-64bit
+    }
+
+
+
+    return
+
+    builder.pod.runFromBuilder rocky8 {
+        
+    }
+    builder.podman.run rocky8 {
+        sudo dnf install libcurl-dev
+    }
+    return
+    env KITCREATOR_PKGS "itcl tk tcllib tclcurl"
+    exec.run  ./kitcreator retry --enable-64bit
+}
+

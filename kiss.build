@@ -1,0 +1,157 @@
+
+package require kissb.builder.podman
+package require kissb.builder.rclone
+
+env.unset XDG_RUNTIME_DIR
+
+rclone.init
+builder.selectDockerRuntime
+
+#rclone.run --config ./rclone.conf mkdir ovhs3:tcl9
+#rclone.run --config ./rclone.conf mkdir ovhs3:kissb/tcl9
+
+def build_tcltk {tclVersion targetOses} {
+
+    set tclName tcl$tclVersion
+    set tkName  tk$tclVersion
+
+    files.inDirectory .kb/build/$tclVersion-archlinux {
+        # try building pacman
+        set package $tclName
+        files.cpSubst $::BASE/packaging/archlinux/PKGBUILD .
+        builder.podman.run archlinux {
+            cd $tclName/unix
+            ls
+            makepkg
+        }
+    }
+    
+
+    return 
+
+    # Prepare package build folder 
+    files.inDirectory .kb/build/$tclVersion {
+        
+        set tclName tcl$tclVersion
+        set tkName  tk$tclVersion
+
+        # Download
+        foreach package [list $tclName $tkName] {
+            files.require $package/README.md {
+                files.require $package-src.tar.gz {
+                    files.download http://prdownloads.sourceforge.net/tcl/$package-src.tar.gz $package-src.tar.gz
+                }
+                files.extract $package-src.tar.gz
+            }
+        }
+        
+        
+
+        # try building pacman
+        files.cp $::BASE/packaging/archlinux/PKGBUILD $tclName/unix
+        builder.podman.run archlinux {
+            cd $tclName/unix
+            ls
+            makepkg
+        }
+
+        return 
+        # Build TCL/TK
+        foreach {packageName opts} [list $tclName {} $tkName [list --with-tcl=../../$tclName/unix]] {
+            
+            set ::CFGOPT $opts
+            ignore false {
+                foreach os $targetOses {
+                    set archiveName ${packageName}-${os}.tar.gz
+                    
+                    builder.build $packageName/unix/$archiveName on $os with {
+                        cd $packageName/unix
+                        ./configure ${::CFGOPT} --prefix=/install
+                        make install -j8 && tar --transform "s/^install/${packageName}/" -cf $archiveName /install
+                        
+                    }
+                }
+            }
+            
+        }
+        
+    }
+    
+
+}
+
+build_tcltk 9.0b2 ubuntu-jammy
+
+
+return 
+
+@ tk9.build {
+
+}
+@ tcl9.build {
+
+    cd tcl9
+    set tclVersion tcl9.0b2
+
+    # Download
+    files.require ${tclVersion}/.travis.yml {
+        files.require ${tclVersion}-src.tar.gz {
+            files.download http://prdownloads.sourceforge.net/tcl/${tclVersion}-src.tar.gz ${tclVersion}-src.tar.gz
+        }
+        files.extract ${tclVersion}-src.tar.gz
+    }
+    
+    ## Building using KISS Builders [file normalize ./dist]
+    cd ${tclVersion}
+    env CFGOPT ""
+    log.info "Running using Builder image in [pwd]"
+
+    
+    ignore false {
+        foreach os {ubuntu-focal ubuntu-jammy ubuntu-mantic ubuntu-noble rocky9} {
+            set archiveName ${tclVersion}-${os}.tar.gz
+            
+            builder.build unix/$archiveName on $os with {
+                cd unix
+                ./configure ${::CFGOPT} --prefix=/install
+                make install -j8
+                tar --transform "s/^install/${tclVersion}/" -cf $archiveName /install
+            }
+        }
+    }
+    
+
+    ## Return to main folder
+    cd ..
+
+    ## Copy all created dist files
+    files.mkdir dist
+    files.cp $tclVersion/unix/${tclVersion}*.gz dist/
+    foreach outFile [glob dist/*.gz] {
+        log.success "Pushing $outFile to S3"
+        rclone.run copy --s3-acl=public-read $outFile ovhs3:kissb/tcl9/
+    }
+    
+    #exec.run podman run -v.:/build rleys/builder:ubuntu-jammy ls /build
+    #exec.run podman run -v.:/build rleys/builder:ubuntu-jammy /bin/bash -c "cd unix && ./configure ${::CFGOPT} --prefix=[file normalize ./dist]"
+
+    return 
+    # Prepare packages
+    #############
+    exec.run sudo apt install gcc-multilib
+
+    # Build types
+    set buildTypes {linux-gcc-shared}
+
+    ## Build
+    cd ${tclVersion}
+    env CFGOPT ""
+    exec.run touch generic/tclStubInit.c generic/tclOOStubInit.c generic/tclOOScript.h
+    files.inDirectory unix {
+        files.mkdir dist
+        exec.run ./configure ${::CFGOPT} --prefix=[file normalize ./dist]
+        exec.run make install
+    }
+ 
+
+}
