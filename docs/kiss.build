@@ -1,0 +1,11 @@
+
+
+# Required: 
+# Required: apt-get install libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev libz-dev pngquant
+
+set build.name "tcl9-docs"
+
+flow.load mkdocs+netlify
+
+node.init
+

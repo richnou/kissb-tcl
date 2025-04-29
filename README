@@ -1,2 +1,8 @@
+# TCL Builds 
 
-# Ubuntu
+This repository provides scripts to build TCL 8.6 and TCL 9 with TCL Kits, and some commonly required libraries.
+
+TCL9 builds are generated from the tcl9 folder, and TCL 8.6 from the tclkit folder.
+
+**As of today, Documentation is focussing on the TCL9 builds, TCL 8.6 will follow**
+

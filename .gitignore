@@ -1,2 +1,10 @@
 .kb
+.netlify
+.cache
+build
+dist
 kitcreator-trunk*
+rclone.conf
+
+# Local Netlify folder
+.netlify

@@ -1,0 +1,73 @@
+site_name: TCL Builds and distributions
+site_url: https://tcl9.kissb.dev
+copyright: Copyright &copy; 2025 Richard Leys
+
+docs_dir: pages
+plugins:
+  - exclude:
+      glob:
+        - '**/~*'
+  - drawio_file
+  - search
+  - kroki
+  - git-revision-date
+  - git-committers:
+      repository: richnou/kissb-tcl
+      branch: main
+  - awesome-pages
+  - include-markdown
+  - mkdocstrings
+  - glightbox
+  - macros
+  - table-reader:
+      data_path: "."
+      allow_missing_files: True
+  - privacy
+  - tags
+
+repo_url: https://github.com/richnou/kissb-tcl
+edit_uri: edit/main/docs/pages/
+repo_name: KISSB-TCL
+extra_css:
+  - stylesheets/extra.css
+theme:
+  name: material
+  logo: images/kissb-logo-512-inverted.svg
+  custom_dir: overrides
+  palette:
+    primary: custom
+  font:
+    text: Baloo Chettan 2
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - content.code.copy
+    - content.action.edit
+    - toc.integrate
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - abbr
+  - pymdownx.snippets
+  - footnotes
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      use_pygments: true
+      linenums: true
+      linenums_style: pymdownx.table
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - toc:
+      title: 'Table of Contents'
+      toc_depth: '2-5'
+      permalink: true
