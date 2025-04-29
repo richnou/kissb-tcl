@@ -1,0 +1,413 @@
+
+
+package require kissb.builder.podman
+package require kissb.docker
+package require kissb.builder.rclone
+
+rclone.init
+
+builder.selectDockerRuntime
+
+# Prepare builder image
+docker.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
+
+set tclConfigureArgs {}
+set tkConfigureArgs {}
+
+
+vars.set variants  {static shared}
+vars.set buildDir .kb/build
+
+vars.set tcl-base-version 9.0
+vars.set tcl-full-version 9.0.1
+
+proc getSourceFromTar {req tar url} {
+
+    files.require $req {
+        files.require $tar {
+            files.download $url $tar
+            
+        }
+        files.extract $tar
+    }
+
+}
+
+@ build-tcl {
+
+    
+    files.inDirectory $::buildDir {
+
+        # get source
+        getSourceFromTar tcl${::tcl-full-version}/unix tcl${::tcl-full-version}-src.tar.gz http://prdownloads.sourceforge.net/tcl/tcl${::tcl-full-version}-src.tar.gz
+
+        # Build static and shared variants
+        foreach variant $::variants {
+
+            set configArgs {}
+            switch $variant {
+                static { 
+                    set reqOutput install-tcl-static/lib/libtcl${::tcl-base-version}.a 
+                    lappend configArgs --disable-shared
+                }
+                shared { 
+                    set reqOutput install-tcl-shared/lib/libtcl${::tcl-base-version}.so 
+                }
+            }
+
+            files.require $reqOutput {
+            
+                
+                #make distclean
+                builder.image.run rleys/kissb-tcl9builder {
+                    pushd tcl${::tcl-full-version}/unix
+                    mkdir -p /build/install-tcl-${variant}
+                    make distclean
+                    ./configure --prefix=/build/install-tcl-${variant} $configArgs
+                    make install -j8
+                    
+                }
+            }
+            
+        }
+        
+    }
+}
+
+@ build-tk {
+
+    #make distclean
+    files.inDirectory $::buildDir {
+
+        # get source
+        getSourceFromTar tk${::tcl-full-version}/unix tk${::tcl-full-version}-src.tar.gz http://prdownloads.sourceforge.net/tcl/tk${::tcl-full-version}-src.tar.gz
+
+        # Build static and shared variants
+        foreach variant $::variants {
+
+            set configArgs {}
+            switch $variant {
+                static { 
+                    set reqOutput install-tcl-static/lib/libtcl9tk${::tcl-base-version}.a 
+                    lappend configArgs --disable-shared
+                }
+                shared { 
+                    set reqOutput install-tcl-shared/lib/libtcl9tk${::tcl-base-version}.so 
+                }
+            }
+            
+            files.require $reqOutput {
+                builder.image.run rleys/kissb-tcl9builder {
+                    pushd tk${::tcl-full-version}/unix
+                    mkdir -p /build/install-tk-$variant
+                    make distclean
+                    ./configure --prefix=/build/install-tk-$variant --with-tcl=/build/install-tcl-$variant/lib $configArgs
+                    make install -j8   
+                }
+            }
+        }
+        
+        
+        
+    }
+    
+
+    
+
+}
+
+
+@ {images-tcl "makes shared and static images for runtime and development"} {
+
+    > build-tcl
+    
+    files.inDirectory $::buildDir {
+        
+        # Require CriTCL to add to dev image
+        getSourceFromTar ./critcl-3.3.1/build.tcl critcl-3.3.1.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/3.3.1.tar.gz
+
+        foreach variant $::variants {
+            docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:${::tcl-full-version}
+            docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant-dev  rleys/kissb-tclsh9-$variant-rocky8-dev:${::tcl-full-version}
+        }
+    }
+
+}
+
+@ {images-tk "Make TK images for runtime and development"} {
+
+
+    > build-tk
+
+    files.inDirectory $::buildDir {
+        
+        # Require CriTCL to add to dev image
+        getSourceFromTar ./critcl-3.3.1/build.tcl critcl-3.3.1.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/3.3.1.tar.gz
+
+        foreach variant $::variants {
+            docker.image.build ${::kissb.projectFolder}/Dockerfile.wish9-$variant      rleys/kissb-wish9-$variant:${::tcl-full-version}
+            docker.image.build ${::kissb.projectFolder}/Dockerfile.wish9-$variant-dev  rleys/kissb-wish9-$variant-rocky8-dev:${::tcl-full-version}
+        }
+    }
+    
+}
+
+@ build-tcllib {
+
+    ## Download
+    files.inDirectory ${::buildDir} {
+
+        files.require install-tcllib/lib/tcllib2.0/pkgIndex.tcl {
+
+            files.require tcllib-2.0/configure {
+                files.require tcllib-2.0.tar.gz {
+                    files.download https://core.tcl-lang.org/tcllib/uv/tcllib-2.0.tar.gz
+                }
+                files.extract  tcllib-2.0.tar.gz 
+            }
+
+    
+            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl-full-version} {
+                pushd tcllib-2.0/
+                mkdir -p /build/install-tcllib
+                ./configure --prefix=/build/install-tcllib --with-tclsh=/install-tcl/bin/tclsh9.0
+                make install -j8   
+            }
+        }
+        
+    }
+}
+
+
+
+@ build-tclx {
+
+    files.inDirectory ${::buildDir} {
+
+        files.requireOrRefresh install-tclx/lib/tclx8.6/autoload.tcl TCLX {
+            files.delete install-tclx/lib
+            files.require tclx-8.6.3/CHANGES {
+                exec.run git clone https://github.com/opendesignflow/tclx.git tclx-8.6.3
+                #files.require tclx-8.6.3.tar.gz {
+                #    files.download https://github.com/flightaware/tclx/archive/refs/tags/v8.6.3.tar.gz tclx-8.6.3.tar.gz
+                #}
+                #files.extract  tclx-8.6.3.tar.gz 
+            }
+        
+            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl-full-version} {
+                pushd tclx-8.6.3/
+                mkdir -p /build/install-tclx
+                autoconf
+                # --disable-shared
+                ./configure --help 
+                ./configure --prefix=/build/install-tclx --exec-prefix=/build/install-tclx --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
+                make -j8
+                make install   
+            }
+        }
+        
+    }
+
+ 
+}
+
+
+@ build-tcltls {
+
+        
+    set tlcTLSVersion 1.7.22
+    set tclTLSChecking e19f6b3f18
+    set baseName tcltls-${tclTLSChecking}
+
+    files.inDirectory ${::buildDir} {
+
+        files.requireOrRefresh install-tcltls/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
+            files.delete install-tcltls/lib
+            files.require ${baseName}/ChangeLog {
+                files.require ${baseName}.tar.gz {
+                    files.download https://core.tcl-lang.org/tcltls/tarball/e19f6b3f18/${baseName}.tar.gz ${baseName}.tar.gz
+                }
+                files.extract ${baseName}.tar.gz
+            }
+
+            # Get LibreSSL
+            #files.require libressl-x86_64-linux-rhel8-4.0.0/lib/libssl.so {
+            #    files.require libressl-x86_64-linux-rhel8-4.0.0.tar.gz {
+            #        files.download https://kissb.s3.de.io.cloud.ovh.net/libs/libressl/4.0.0/libressl-x86_64-linux-rhel8-4.0.0.tar.gz libressl-x86_64-linux-rhel8-4.0.0.tar.gz
+            #    }
+            #    files.extract libressl-x86_64-linux-rhel8-4.0.0.tar.gz
+            #    
+            #}
+
+            #builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl-full-version} {
+            #    pushd ${baseName}/
+            #    mkdir -p /build/install-tcltls
+            #    ./configure --help
+            #    ./configure  --with-openssl-pkgconfig=/build/libressl-x86_64-linux-rhel8-4.0.0/lib/pkgconfig/ --prefix=/build/install-tcltls --enable-64bit --enable-static-ssl  --exec-prefix=/build/install-tcltls --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
+            #    make clean
+            #    make -j8
+            #    make install
+            #}
+
+          
+            files.delete patches
+            files.cp ${::kissb.projectFolder}/patches .
+            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl-full-version} {
+                pushd ${baseName}/
+                mkdir -p /build/install-tcltls
+                patch -u acinclude.m4 -i ../patches/tcltls-acinclude.m4
+                #--enable-static-ssl
+                #autoconf
+                #automake
+                #
+                autoconf
+                TCLTLS_SSL_LIBS="-lssl -lz -lcrypto -pthread"  ./configure --prefix=/build/install-tcltls --enable-64bit --enable-static-ssl  --exec-prefix=/build/install-tcltls --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
+                make clean
+                make -j8
+                make install   
+            }
+        }
+        
+    }
+
+
+}
+
+
+
+
+@ {package-tcl9 "Creates tarball and images for tcl9"}  {
+
+    > build-tcl
+
+    ## Make images
+    > images-tcl
+
+    ## Make Packages
+    files.inDirectory $::buildDir/dist/tcl9 {
+        set archName tcl${::tcl-full-version}-bin-static
+        files.delete $archName
+        docker.image.run rleys/kissb-tclsh9-static:${::tcl-full-version} -args {--entrypoint /bin/bash} -imgArgs [list -c "cp -Rf /install-tcl/ /build/$archName"]
+        files.tarDir $archName $archName.tar.gz
+
+
+        set archName tcl${::tcl-full-version}-bin-shared
+        files.delete $archName
+        docker.image.run rleys/kissb-tclsh9-shared:${::tcl-full-version} -args {--entrypoint /bin/bash} -imgArgs [list -c "cp -Rf /install-tcl/ /build/$archName"]
+        files.tarDir $archName $archName.tar.gz
+
+
+    }
+}
+
+@ {kit-tcl9 "Make a basic TCL9 Kit"} {
+
+    package require kissb.tcl9.kit
+
+    files.inDirectory $::buildDir/dist/tcl9 {
+        files.requireOrRefresh tclkit-${::tcl-full-version} TCLKIT {
+            tcl9.kit.make 
+        }
+        
+    }
+}
+
+@ {kit-tk9 "Make a basic TK9 Kit"} {
+
+    package require kissb.tcl9.kit
+
+    files.inDirectory $::buildDir/dist/tcl9 {
+        files.requireOrRefresh tclkit-${::tcl-full-version} TCLKIT {
+            tcl9.kit.make -image rleys/kissb-wish9-static:${::tcl-full-version}
+        }
+        
+    }
+}
+
+@ {package-tk9 "Package TK9 as image and tarball"} {
+
+    > build-tk
+    > images-tk
+
+    ## Make binary tarball
+
+    ## Make images
+    > image-tcl-static
+}
+
+
+@ {release-tcl9 "Packages TCL9, push images and upload tarballs"} {
+
+
+    > package-tcl9
+    > kit-tcl9
+
+
+    ## Upload to S3
+    files.inDirectory ${::buildDir} {
+        files.withGlobFiles [list dist/tcl9/tcl${::tcl-full-version}*.tar.gz dist/tcl9/*kit-*] {
+            log.info "Uploading [file tail $file] to S3..."
+            rclone.run copy -P --s3-acl=public-read $file ovhs3:kissb/tcl9/${::tcl-full-version}/
+        }
+    }
+
+    ## Push to docker
+    docker.push  rleys/kissb-tclsh9-static:${::tcl-full-version}
+    docker.push  rleys/kissb-tclsh9-shared:${::tcl-full-version}
+    docker.push  rleys/kissb-tclsh9-static-rocky8-dev:${::tcl-full-version}
+    docker.push  rleys/kissb-tclsh9-shared-rocky8-dev:${::tcl-full-version}
+
+    
+
+
+}
+
+
+@ {image-dist1-tcl9 "Create Image for KISSB DIST1 TCL"} {
+
+    > images-tcl
+    > build-tcllib
+    > build-tclx
+    > build-tcltls
+
+
+    files.inDirectory $::buildDir {
+        docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-static-full rleys/kissb-tclsh9-static-dist1:${::tcl-full-version}
+    }
+}
+
+@ {package-dist1-tcl9 "Package Dist"} {
+
+    package require kissb.tcl9.kit
+
+    puts "args: $args"
+    
+    # Copy Install from Image
+    files.inDirectory $::buildDir/dist/dist1-tcl9 {
+
+        set archName tcl${::tcl-full-version}-bin-dist1-static
+        files.require $archName.tar.gz {
+            
+            > image-dist1-tcl9
+
+            files.delete ${__f}
+            docker.image.run rleys/kissb-tclsh9-static-dist1:${::tcl-full-version} -args {--entrypoint /bin/bash} -imgArgs [list -c "cp -Rf /install-tcl/ /build/$archName"]
+            files.tarDir $archName ${__f}
+        }
+
+      
+        files.requireOrRefresh tclkit-dist1-${::tcl-full-version} TCLKIT {
+            tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl-full-version}
+        }
+
+        kissb.args.contains --release {
+            log.info "Uploading tclkit-dist1-${::tcl-full-version} to S3..."
+            rclone.run copy -P --s3-acl=public-read tclkit-dist1-${::tcl-full-version} ovhs3:kissb/tcl9-dist1/
+            rclone.run copy -P --s3-acl=public-read $archName.tar.gz ovhs3:kissb/tcl9-dist1/
+            
+        }
+        
+    }
+
+    
+}
