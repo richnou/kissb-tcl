@@ -1,0 +1,10 @@
+FROM opensuse/leap:latest
+
+COPY install-tcl-static /install-tcl
+COPY install-tcllib /install-tcl
+COPY install-tclx /install-tcl
+COPY install-tcltls /install-tcl
+
+WORKDIR /app
+ENTRYPOINT ["/install-tcl/bin/tclsh9.0"]
+

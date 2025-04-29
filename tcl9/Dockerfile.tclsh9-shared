@@ -1,0 +1,9 @@
+FROM opensuse/leap:latest
+
+COPY install-tcl-shared /install-tcl
+
+ENV LD_LIBRARY_PATH=/install-tcl/lib
+
+WORKDIR /app
+ENTRYPOINT ["/install-tcl/bin/tclsh9.0"]
+

@@ -1,0 +1,17 @@
+FROM rockylinux/rockylinux:8
+
+COPY install-tcl-static /install-tcl 
+COPY install-tk-static /install-tk
+
+
+
+#RUN zypper addrepo  https://download.opensuse.org/repositories/X11:XOrg/openSUSE_Tumbleweed/X11:XOrg.repo
+#RUN zypper -n refresh  | echo 'a'
+#RUN zypper -n install -y libX11 | echo 'a'
+RUN dnf install -y libX11
+
+ENV DISPLAY=:0
+
+WORKDIR /build
+ENTRYPOINT ["/install-tk/bin/wish9.0"]
+

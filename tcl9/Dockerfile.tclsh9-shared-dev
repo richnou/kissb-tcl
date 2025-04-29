@@ -1,0 +1,14 @@
+FROM rleys/kissb-tcl9builder:latest
+
+COPY install-tcl-shared /install-tcl
+RUN cd /install-tcl/bin && ln -s tclsh9.0 tclsh
+
+ENV LD_LIBRARY_PATH=/install-tcl/lib
+
+# Critcl
+COPY critcl-3.3.1 /critcl-3.3.1
+RUN cd /critcl-3.3.1 && /install-tcl/bin/tclsh9.0 ./build.tcl install
+
+WORKDIR /build
+
+
