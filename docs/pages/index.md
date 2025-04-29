@@ -1,15 +1,17 @@
 ---
 title: TCL9 distributions
-description: This page provides TCL9 binary builds and build scripts
+description:  Download optimized TCL 9 binary builds, single-file executables (TclKit), and Docker images. Includes static and shared builds for easy deployment on Linux systems.
 ---
 
 # TCL 9 
 
+## About
 
-KISSB packages are compatible with TCL9 and the TCL kit single file executable are build using the new TCL9 builtin single file application module.
+These Tcl 9 builds are provided to offer convenient and optimized Tcl 9 distributions for various deployment scenarios.
 
-As part of our build process we are releasing some TCL/TK9 packages available as archive, docker image or base TCL KIT single file. 
-Additionally, we are building a TCL distribution with some popular libraries like tcllib or tcl TLS.
+Our goal is to provide the TCL community with reproducable builds for various TCL packages.
+
+Additionally, we are building a TCL distribution with some popular libraries like tcllib or tcltls, alongside some useful utilities for users to run legacy TCL scripts or write new TCL apps even faster.
 
 ## TCL Binary Archives 
 
