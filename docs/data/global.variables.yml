@@ -1,0 +1,5 @@
+id: "global.variables"
+s3:
+  url: https://kissb.s3.de.io.cloud.ovh.net
+  tcl901: https://kissb.s3.de.io.cloud.ovh.net/tcl9/9.0.1
+  tcl901_current: https://kissb.s3.de.io.cloud.ovh.net/tcl9/9.0.1/250501
