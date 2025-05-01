@@ -1,7 +1,7 @@
 FROM opensuse/leap:latest
 
-COPY install-tcl-static /install-tcl
-COPY install-tcllib /install-tcl
+COPY install-tcl-x86_64-redhat-linux-rhel8-static-9.0.1 /install-tcl
+COPY install-tcllib-x86_64-redhat-linux-rhel8-tcl9.0.1-2.0 /install-tcl
 COPY install-tclx /install-tcl
 COPY install-tcltls /install-tcl
 

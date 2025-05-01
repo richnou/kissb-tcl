@@ -1,9 +1,10 @@
 FROM opensuse/leap:latest
 
-COPY install-tcl-shared /install-tcl
+RUN zypper -n install rlwrap
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1 /install-tcl
 
 ENV LD_LIBRARY_PATH=/install-tcl/lib
 
 WORKDIR /app
-ENTRYPOINT ["/install-tcl/bin/tclsh9.0"]
+ENTRYPOINT ["/usr/bin/rlwrap","/install-tcl/bin/tclsh9.0"]
 

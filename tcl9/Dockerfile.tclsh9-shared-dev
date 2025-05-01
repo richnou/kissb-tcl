@@ -1,6 +1,6 @@
 FROM rleys/kissb-tcl9builder:latest
 
-COPY install-tcl-shared /install-tcl
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1 /install-tcl
 RUN cd /install-tcl/bin && ln -s tclsh9.0 tclsh
 
 ENV LD_LIBRARY_PATH=/install-tcl/lib
