@@ -1,4 +1,6 @@
-
+# SPDX-FileCopyrightText: 2025 KISSB-TCL
+#
+# SPDX-License-Identifier: Apache-2.0
 
 package require kissb.builder.podman
 package require kissb.docker
@@ -21,15 +23,28 @@ vars.define tcl.version.major 9.0
 vars.define tcl.version.minor 9.0.1
 
 
-vars.define arch "linux-x86_64"
+
 
 vars.define tcl.variants {static shared}
 
+# Build parameters and helpers
 vars.define build.host x86_64-redhat-linux
 vars.define build.cc   ${::build.host}-gcc
 vars.define build.os   rhel8
 
 vars.define build.targetString ${::build.host}-${::build.os}
+
+proc buildSetMingw args {
+    # Windows Build
+    vars.set build.host         x86_64-w64-mingw32
+    vars.set build.cc           ${::build.host}-gcc
+    vars.set build.os           win64
+    vars.set build.targetString ${::build.host}-${::build.os}
+}
+proc buildReset args {
+    vars.revert build.host build.cc build.os build.targetString
+}
+
 
 # If release requested, ensure the release tag was set
 vars.define release.tag -doc "Release Number like a date in format YYMMdd to sort uploaded files in S3" 0
@@ -74,9 +89,6 @@ proc getSourceFromTar {req tar url} {
         getSourceFromTar tcl${::tcl.version.minor}/unix tcl${::tcl.version.minor}-src.tar.gz \
                         http://prdownloads.sourceforge.net/tcl/tcl${::tcl.version.minor}-src.tar.gz
         
-        # x86_64-w64-mingw32
-
-        #CC=x86_64-w64-mingw32-gcc
         # Build static and shared variants
         foreach variant ${::tcl.variants} {
             
@@ -207,35 +219,6 @@ proc getSourceFromTar {req tar url} {
 }
 
 
-@ build-tcllib {
-
-    ## Download
-    files.inDirectory ${::buildDir} {
-
-        set configArgs      --host=${::build.host}
-        set installPrefix   install-tcllib-${::build.targetString}-tcl${::tcl.version.minor}-2.0
-        set tclPrefix       install-tcl-${::build.targetString}-shared-${::tcl.version.minor}
-        set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90": "tclsh9.0"}]
-        #set buildImage      
-        files.requireOrRefresh $installPrefix/lib/tcllib2.0/pkgIndex.tcl tcllib {
-            
-            files.delete $installPrefix/
-            getSourceFromTar ./tcllib-2.0/configure tcllib-2.0.tar.gz https://core.tcl-lang.org/tcllib/uv/tcllib-2.0.tar.gz
-
-
-            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
-                pushd tcllib-2.0/
-                mkdir -p /build/$installPrefix
-                ./configure --help
-                CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/install-tcl/bin/tclsh9.0 $configArgs
-                make clean
-                make install -j8   
-            }
-
-        }
-        
-    }
-}
 
 
 
@@ -578,6 +561,115 @@ proc getSourceFromTar {req tar url} {
     }
 }
 
+
+####################################
+####################################$
+
+
+@ {tcllib.build "Build TCL Lib"} {
+
+    ## Download
+    files.inDirectory ${::buildDir} {
+
+        set configArgs      --host=${::build.host}
+        set installPrefix   install/tcllib-${::build.targetString}-tcl${::tcl.version.minor}-2.0
+        set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
+        set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
+
+        #set buildImage      
+        files.requireOrRefresh $installPrefix/lib/tcllib2.0/pkgIndex.tcl tcllib {
+            
+            files.delete $installPrefix/
+            getSourceFromTar ./tcllib-2.0/configure tcllib-2.0.tar.gz https://core.tcl-lang.org/tcllib/uv/tcllib-2.0.tar.gz
+
+
+            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
+                pushd tcllib-2.0/
+                mkdir -p /build/$installPrefix
+                CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/build/$tclPrefix/bin/$tclSh $configArgs
+                make clean
+                make install -j8   
+            }
+
+            #builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
+            #    pushd tcllib-2.0/
+            #    mkdir -p /build/$installPrefix
+            #    ./configure --help
+            #    CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/install-tcl/bin/tclsh9.0 $configArgs
+            #    make clean
+            #    make install -j8   
+            #}
+
+        }
+        
+    }
+}
+
+@ {tcllib.packages "Build TCL Lib"} {
+
+    >> tcllib.build
+
+    #buildSetMingw
+
+    #>> tcllib.build 
+
+    #buildReset
+}
+
+@ {tklib.build "Build Tk Lib"} {
+
+    ## Download
+    files.inDirectory ${::buildDir} {
+
+        set configArgs      --host=${::build.host}
+        set installPrefix   install/tklib-${::build.targetString}-tcl${::tcl.version.minor}-0.9
+        set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
+        set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
+
+        #set buildImage      
+        files.requireOrRefresh $installPrefix/lib/tklib0.9/pkgIndex.tcl tcllib {
+            
+            files.delete $installPrefix/
+            getSourceFromTar ./tklib-0.9/configure tklib-0.9.tar.xz "https://core.tcl-lang.org/tklib/attachdownload/tklib-0.9.tar.xz?page=Downloads&file=tklib-0.9.tar.xz"
+
+
+            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
+                pushd tklib-0.9/
+                mkdir -p /build/$installPrefix
+                CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/build/$tclPrefix/bin/$tclSh $configArgs
+                make clean
+                make install -j8   
+            }
+        } 
+    }
+}
+
+@ {dist1.package "Create a DIST1 Package"} {
+
+    > tcl9.packages
+    > tk9.packages
+    > tcllib.build
+    > tklib.build
+
+    ## Create an archive folder with all libraries in
+    ## For Dist Kit, use the archive folder lib/ as source of additional libraries
+
+    files.inDirectory ${::buildDir}/dist/tcl9-dist1 {
+
+        files.delete work
+        files.mkdir work
+
+         files.withGlobAll {
+            ../../install/tcl9-*linux*static*/* 
+            ../../install/tk9-*linux*static*/* 
+            ../../install/tcllib-*linux*/* 
+            ../../install/tklib-*linux*/*} {
+            #files.cp $file work/
+            log.info "Copying $file into work"
+            exec.run cp -Rf $file work/
+         }
+    }
+}
 
 @ {image-dist1-tcl9 "Create Image for KISSB DIST1 TCL"} {
 
