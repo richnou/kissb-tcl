@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+{ # this ensures the entire script is downloaded #
+
+
+## VERSION=1.0
+
+## KISSB-TCL Wrapper script to download a TCL9 distribution and run it in a local folder
+
+## Specify versions here
+tclversion=9.0.1 
+release=250501
+
+
+tclInstallFolder=.tcl/binaries/${tclversion}-${release}
+tclRuntimePath=${tclInstallFolder}/tclsh
+if [[ ! -f ${tclRuntimePath} ]]
+then
+    # Download
+    echo "Downloading TCL runtime..."
+    # Prepare local install folder - do not clean install, avoid rm in an external script run from the internet
+    #rm -Rf ${tclInstallFolder}/..
+    mkdir -p ${tclInstallFolder}
+    wget -q --show-progress https://kissb.s3.de.io.cloud.ovh.net/tcl9/${tclversion}/${release}/tclkit9-x86_64-redhat-linux-rhel8-${tclversion} -O ${tclRuntimePath}
+    chmod +x ${tclRuntimePath}
+
+   
+fi
+
+ ## Check if this script is running from file
+## If not, it is piped from wget, so download itself
+if [[ $0 == 'bash' ]]
+then
+    echo "Downloading wrapper script..."
+    wget -q https://tcl9.kissb.dev/get/tclshw
+    chmod +x tclshw
+fi
+
+${tclRuntimePath} $*
+
+} # this ensures the entire script is downloaded #
