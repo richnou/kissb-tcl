@@ -9,3 +9,6 @@ flow.load mkdocs+netlify
 
 node.init
 
+
+files.cp ../scripts/tclshw pages/get/
+files.cp ../scripts/wishw pages/get/

@@ -15,15 +15,30 @@ Additionally, we are building a TCL distribution with some popular libraries lik
 
 The Packages provided are hosted in an S3 Object storage bucket hosted in Europe by OVH.
 
+## Installation options 
+
+Builds are distributed though a few different means to cover most user use cases. 
+Distribution packages are not provided but enough options should be available: 
+
+- Binary archives provide bin/,lib/,include/,share/ folders for users to install at their convienience
+- Single file interpreters (Kit) 
+- [TCL Wrapper script](#tcltk-wrapper) (tclshw or wishw) that will download a local TCL Kit, in the same fashion as tools like Maven or Gradle Wrapper.
+
 ## TCL9/Tk9 Binary Archives 
 
-TCL archives can be downloaded and extracted, they provide a folder with a TCL installation (bin/, lib/ etc..).
+Binary Archives for TCL9 and Tk9 are build for both Linux and Windows Platforms: 
 
-Static or Shared builds are available, static build can for example be used to build a single file application using a statically linked tclsh.
+- Linux binaries are build under a Rocky Linux 8 Environment (RHEL8), which should provide compatibility with most user's distributions
+- Windows binaries are cross-compiled from RockyLinux 8 using Mingw compiler.
 
-TCL/TK is build in a Rocky Linux 8 (Red Hat 8) environment, the binaries should thus be compatible with most user's linux distributions.
+For both platforms, static and shared variants are provided:
 
-### TCL9 Builds
+- Shared builds are recommended for scenarios where the build libraries are installed in a location available in the user's environment (For example system-wide installation with libraries in /usr/lib or /usr/local/lib, or with LD_LIBRARY_PATH configured in a .bashrc or .zshrc file)
+- Static builds are heavier in size but easier to use since users can directly invoke the tclsh or wish interpreters. They are also used to produce single file tcl applications (TCL Kit) via the zipfs package.
+
+
+
+### TCL9 Archives
 
 | Package | Version | Release | Platform | Download |
 |----|----|------| ------|--------|
@@ -32,21 +47,6 @@ TCL/TK is build in a Rocky Linux 8 (Red Hat 8) environment, the binaries should 
 |TCL9 shared    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tcl9-x86_64-w64-mingw32-win64-shared-9.0.1.zip> |
 |TCL9 static    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tcl9-x86_64-w64-mingw32-win64-static-9.0.1.zip> |
 
-### Tk9 Builds
-
-TK9 Archives are build for Linux and Windows as for Tcl9, in shared and static variants. 
-
-!!! warning 
-    When using shared variants, make sure the the TCL9 installation is available in and setup properly (see archive installation).
-
-| Package | Version | Release | Platform | Download |
-|----|----|------| ------|--------|
-|TK9 shared    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz> |
-|TK9 static    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz> |
-|TK9 shared    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tk9-x86_64-w64-mingw32-win64-shared-9.0.1.zip> |
-|TK9 static    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tk9-x86_64-w64-mingw32-win64-static-9.0.1.zip> |
-
-### TCL9 Archive Installation 
 
 To install a binary archive, just unpack the tarball in a folder and setup your environment:
 
@@ -54,7 +54,7 @@ To install a binary archive, just unpack the tarball in a folder and setup your 
 $ wget {{s3.tcl901_current}}/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz
 $ tar xvaf tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz
 $ export PATH=$(pwd)/tcl9-x86_64-redhat-linux-rhel8-shared/bin:$PATH 
-$ export LD_LIBRARY_PATH=$(pwd)/tcl9-x86_64-redhat-linux-rhel8-shared/lib # Optional for static package
+$ export LD_LIBRARY_PATH=$(pwd)/tcl9-x86_64-redhat-linux-rhel8-shared/lib # only required for shared packages, consider adding to .bashrc
 $ tclsh9.0 # Run TCLSH interpreter
 ~~~
 
@@ -72,9 +72,23 @@ PS D:\> wget {{s3.tcl901_current}}/tk9-x86_64-w64-mingw32-win64-static-9.0.1.zip
 PS D:\> Expand-Archive -Path tk9-x86_64-w64-mingw32-win64-shared-9.0.1.zip -DestinationPath .
 ~~~
 
-### TK9 Archive Installation
 
-To use TK9 archives, make sure that TCL9 is installed - in case you are using a shared archive, don't forget to set the **LD_LIBRARY_PATH** environment variable as described previously.
+### Tk9 Archives
+
+TK9 Archives are build for Linux and Windows as for Tcl9, in shared and static variants. 
+
+!!! warning 
+    When using shared variants, make sure the the TCL9 installation is available in and setup properly (see archive installation).
+
+| Package | Version | Release | Platform | Download |
+|----|----|------| ------|--------|
+|TK9 shared    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz> |
+|TK9 static    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz> |
+|TK9 shared    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tk9-x86_64-w64-mingw32-win64-shared-9.0.1.zip> |
+|TK9 static    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tk9-x86_64-w64-mingw32-win64-static-9.0.1.zip> |
+
+
+To use TK9 archives, make sure that TCL9 is installed - in case you are using a shared TCL9 archive, don't forget to set the **LD_LIBRARY_PATH** environment variable as described previously.
 
 To easily get started, you can use a static build, however if TCL9 is not installed some standard libraries like Itcl won't be available:
 
@@ -82,7 +96,7 @@ To easily get started, you can use a static build, however if TCL9 is not instal
 $ wget {{s3.tcl901_current}}/tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz
 $ tar xvaf tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz
 $ export PATH=$(pwd)/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/bin:$PATH 
-$ export LD_LIBRARY_PATH=$(pwd)/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/lib # Optional for static package
+$ export LD_LIBRARY_PATH=$(pwd)/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/lib # only required for shared packages, consider adding to .bashrc
 $ wish9.0 # Run Wish interpreter
 ~~~
 
@@ -131,6 +145,22 @@ $ chmod +x ~/.local/bin/tclsh9.0
 $ tclsh9.0
 ~~~
 
+## TCL/Tk Wrapper {.wrapper}
+
+An alternative way to run tcl in a project folder is to use a wrapper script, in the same fashion as build systems like gradle or maven do.
+
+The wrapper scripts are simple bash scripts called **tclshw** and **wishw** which download a Tcl/Tk single file kit to run a provided script. They can safely be commited to GIT.
+
+**TCL9**
+
+    $ curl -o- https://tcl9.kissb.dev/get/tclshw | bash # Install the wrapper script
+    $ ./tclshw SCRIPT # Run tclsh
+
+**TK9**
+
+    $ curl -o- https://tcl9.kissb.dev/get/wishw | bash # Install the wrapper script
+    $ ./wishw SCRIPT # Run wish
+
 
 ## TCL Docker Image 
 
@@ -148,10 +178,11 @@ For TCL scripts, users can easily run using the tclsh images.
 
 ### Interactive Example 
 
-To quickly spin a tclsh interpreter, just run the image in interactive mode with pty allocation:
+To quickly spin a tclsh interpreter, just run the image in interactive mode with pty allocation.
+The **tclsh** interpreter is run through **rlwrap** to allow command history:
 
 ~~~bash
-$ docker run -it -v .:/app rleys/kissb-tclsh9-static:9.0.1  # Run script
+$ docker run -it -v .:/app rleys/kissb-tclsh9-static:9.0.1  # Run REPL
 ~~~
 
 ### Script Example 
@@ -171,7 +202,7 @@ $ docker run -v .:/app rleys/kissb-tclsh9-static:9.0.1 helloworld.tcl # Run scri
 
 TCL is installed in the /install-tcl folder in the image, users can copy that folder out of the image if needed to extract the binaries or replace some libraries
 
-## Feedback / Bugs 
+## Issue reporting and Contributions 
 
 For feedback, requests and issues please use the Github issue tracker 
 
