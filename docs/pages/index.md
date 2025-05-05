@@ -18,7 +18,7 @@ The Packages provided are hosted in an S3 Object storage bucket hosted in Europe
 ## Installation options 
 
 Builds are distributed though a few different means to cover most user use cases. 
-Distribution packages are not provided but enough options should be available: 
+Packages for Linux distributions are not provided but enough options are available: 
 
 - Binary archives provide bin/,lib/,include/,share/ folders for users to install at their convienience
 - Single file interpreters (Kit) 
@@ -208,10 +208,4 @@ For feedback, requests and issues please use the Github issue tracker
 
 <https://github.com/richnou/kissb-tcl>
 
-## Licensing
 
-The scripts and binaries offered by this repository are released under the Apache 2 License, which is compatible with the original BSD Like Tcl/Tk License.
-
-The original licenses for each package still apply, and are summarized in the repository license file:
-
-<https://github.com/richnou/kissb-tcl/blob/main/LICENSE>
