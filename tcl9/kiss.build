@@ -65,6 +65,12 @@ proc s3copy {local remote args} {
     rclone.run copy {*}$s3args -P --s3-acl=public-read {*}$args $local ovhs3:kissb/$remote
 }
 
+proc s3List {remote args} {
+
+    return [lmap {size name} [rclone.call ls --fast-list  ovhs3:kissb/$remote {*}$args] { string trim $name } ]
+
+}
+
 # Prepare builder image
 docker.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
@@ -79,6 +85,20 @@ proc getSourceFromTar {req tar url} {
     }
 
 }
+
+proc packageFolder {folder refresh} {
+
+    log.info "Packing ${folder}"
+    set archName [file tail $folder]
+    set archType [expr  {[string match *x86_64-w64-mingw32* $archName] ? "zip": "tar.gz"}]
+    set archFile ${archName}.${archType}
+
+    files.requireOrRefresh $archFile $refresh {
+        files.delete $archFile
+        files.compressDir $folder $archFile
+    }
+}
+
 
 @ tcl9.build {
 
@@ -221,99 +241,6 @@ proc getSourceFromTar {req tar url} {
 
 
 
-
-@ build-tclx {
-
-    files.inDirectory ${::buildDir} {
-
-        files.requireOrRefresh install-tclx/lib/tclx8.6/autoload.tcl TCLX {
-            files.delete install-tclx/lib
-            files.require tclx-8.6.3/CHANGES {
-                exec.run git clone https://github.com/opendesignflow/tclx.git tclx-8.6.3
-                #files.require tclx-8.6.3.tar.gz {
-                #    files.download https://github.com/flightaware/tclx/archive/refs/tags/v8.6.3.tar.gz tclx-8.6.3.tar.gz
-                #}
-                #files.extract  tclx-8.6.3.tar.gz 
-            }
-        
-            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
-                pushd tclx-8.6.3/
-                mkdir -p /build/install-tclx
-                autoconf
-                # --disable-shared
-                ./configure --help 
-                ./configure --prefix=/build/install-tclx --exec-prefix=/build/install-tclx --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
-                make -j8
-                make install   
-            }
-        }
-        
-    }
-
- 
-}
-
-
-@ build-tcltls {
-
-        
-    set tlcTLSVersion 1.7.22
-    set tclTLSChecking e19f6b3f18
-    set baseName tcltls-${tclTLSChecking}
-
-    files.inDirectory ${::buildDir} {
-
-        files.requireOrRefresh install-tcltls/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
-            files.delete install-tcltls/lib
-            files.require ${baseName}/ChangeLog {
-                files.require ${baseName}.tar.gz {
-                    files.download https://core.tcl-lang.org/tcltls/tarball/e19f6b3f18/${baseName}.tar.gz ${baseName}.tar.gz
-                }
-                files.extract ${baseName}.tar.gz
-            }
-
-            # Get LibreSSL
-            #files.require libressl-x86_64-linux-rhel8-4.0.0/lib/libssl.so {
-            #    files.require libressl-x86_64-linux-rhel8-4.0.0.tar.gz {
-            #        files.download https://kissb.s3.de.io.cloud.ovh.net/libs/libressl/4.0.0/libressl-x86_64-linux-rhel8-4.0.0.tar.gz libressl-x86_64-linux-rhel8-4.0.0.tar.gz
-            #    }
-            #    files.extract libressl-x86_64-linux-rhel8-4.0.0.tar.gz
-            #    
-            #}
-
-            #builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
-            #    pushd ${baseName}/
-            #    mkdir -p /build/install-tcltls
-            #    ./configure --help
-            #    ./configure  --with-openssl-pkgconfig=/build/libressl-x86_64-linux-rhel8-4.0.0/lib/pkgconfig/ --prefix=/build/install-tcltls --enable-64bit --enable-static-ssl  --exec-prefix=/build/install-tcltls --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
-            #    make clean
-            #    make -j8
-            #    make install
-            #}
-
-          
-            files.delete patches
-            files.cp ${::kissb.projectFolder}/patches .
-            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
-                pushd ${baseName}/
-                mkdir -p /build/install-tcltls
-                patch -u acinclude.m4 -i ../patches/tcltls-acinclude.m4
-                #--enable-static-ssl
-                #autoconf
-                #automake
-                #
-                autoconf
-                TCLTLS_SSL_LIBS="-lssl -lz -lcrypto -pthread"  ./configure --prefix=/build/install-tcltls --enable-64bit --enable-static-ssl  --exec-prefix=/build/install-tcltls --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
-                make clean
-                make -j8
-                make install   
-            }
-        }
-        
-    }
-
-
-}
 
 
 
@@ -566,7 +493,7 @@ proc getSourceFromTar {req tar url} {
 ####################################$
 
 
-@ {tcllib.build "Build TCL Lib"} {
+@ {dist1.tcllib.build "Build TCL Lib"} {
 
     ## Download
     files.inDirectory ${::buildDir} {
@@ -605,9 +532,9 @@ proc getSourceFromTar {req tar url} {
     }
 }
 
-@ {tcllib.packages "Build TCL Lib"} {
+@ {dist1.tcllib.packages "Build TCL Lib"} {
 
-    >> tcllib.build
+    >> dist1.tcllib.build
 
     #buildSetMingw
 
@@ -616,7 +543,7 @@ proc getSourceFromTar {req tar url} {
     #buildReset
 }
 
-@ {tklib.build "Build Tk Lib"} {
+@ {dist1.tklib.build "Build Tk Lib"} {
 
     ## Download
     files.inDirectory ${::buildDir} {
@@ -644,34 +571,271 @@ proc getSourceFromTar {req tar url} {
     }
 }
 
+
+
+@ {dist1.tclx.build "Build for TCLX Library"} {
+
+    files.inDirectory ${::buildDir} {
+
+        set configArgs      --host=${::build.host}
+        set installPrefix   install/tclx-${::build.targetString}-tcl${::tcl.version.minor}-8.6.3
+        set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
+        set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
+
+        files.requireOrRefresh $installPrefix/lib/tclx8.6/autoload.tcl tclx {
+            files.delete $installPrefix
+            files.require tclx-8.6.3/CHANGES {
+                exec.run git clone https://github.com/opendesignflow/tclx.git tclx-8.6.3
+            }
+        
+            builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
+                pushd tclx-8.6.3/
+                mkdir -p /build/$installPrefix
+                autoconf
+                make distclean
+                # --disable-shared
+                ./configure --help 
+                ./configure --prefix=/build/$installPrefix \
+                            --exec-prefix=/build/$installPrefix \
+                            --with-tcl=/build/$tclPrefix/lib \
+                            --with-tclinclude=/build/$tclPrefix/include \
+                            $configArgs
+                
+                make -j8
+                make install   
+            }
+        }
+        
+    }
+
+ 
+}
+
+@ {dist1.tclx.package "Package TCLX Library"} {
+
+    >> dist1.tclx.build
+
+    buildSetMingw
+
+    >> dist1.tclx.build 
+
+    #buildReset
+}
+
+
+@ {dist1.tcltls.build "Build for TCLLS library"} {
+
+        
+    set tlcTLSVersion 1.7.22
+    set tclTLSChecking e19f6b3f18
+    set baseName tcltls-${tclTLSChecking}
+
+    files.inDirectory ${::buildDir} {
+
+   
+        set installPrefix   install/tcltls-${::build.targetString}-tcl${::tcl.version.minor}-2.0b1
+        set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
+        set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
+
+        #set buildImage      
+        files.requireOrRefresh install-tcltls/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
+
+            files.delete $installPrefix/
+            getSourceFromTar ${baseName}/ChangeLog ${baseName}.tar.gz "https://core.tcl-lang.org/tcltls/tarball/e19f6b3f18/${baseName}.tar.gz"
+
+            # Get LibreSSL
+            #files.require libressl-x86_64-linux-rhel8-4.0.0/lib/libssl.so {
+            #    files.require libressl-x86_64-linux-rhel8-4.0.0.tar.gz {
+            #        files.download https://kissb.s3.de.io.cloud.ovh.net/libs/libressl/4.0.0/libressl-x86_64-linux-rhel8-4.0.0.tar.gz libressl-x86_64-linux-rhel8-4.0.0.tar.gz
+            #    }
+            #    files.extract libressl-x86_64-linux-rhel8-4.0.0.tar.gz
+            #    
+            #}
+
+            #builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
+            #    pushd ${baseName}/
+            #    mkdir -p /build/install-tcltls
+            #    ./configure --help
+            #    ./configure  --with-openssl-pkgconfig=/build/libressl-x86_64-linux-rhel8-4.0.0/lib/pkgconfig/ --prefix=/build/install-tcltls --enable-64bit --enable-static-ssl  --exec-prefix=/build/install-tcltls --with-tcl=/install-tcl/lib --with-tclinclude=/install-tcl/include
+            #    make clean
+            #    make -j8
+            #    make install
+            #}
+
+          
+            files.delete patches
+            files.cp ${::kissb.projectFolder}/patches .
+            #  rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor}
+            builder.image.run rleys/kissb-tcl9builder  {
+                pushd ${baseName}/
+                mkdir -p /build/$installPrefix
+                patch -u acinclude.m4 -i ../patches/tcltls-acinclude.m4
+                autoconf
+                TCLTLS_SSL_LIBS="-lssl -lz -lcrypto -pthread" \
+                ./configure --prefix=/build/$installPrefix \
+                            --enable-64bit \
+                            --enable-static-ssl  \
+                            --exec-prefix=/build/$installPrefix \
+                            --with-tcl=/build/$tclPrefix/lib \
+                            --with-tclinclude=/build/$tclPrefix/include
+                make clean
+                make -j8
+                make install   
+            }
+        }
+        
+    }
+
+
+}
+
+
+@ {dist1.tcltls.package "Build for TCLLS library"} {
+
+    >> dist1.tcltls.build
+
+
+    files.inDirectory $::buildDir/dist/tcltls {
+
+        files.withGlobAll {
+            ../../install/tcltls-*linux*
+        } {
+
+            #log.info "Copying $file into work"
+            #exec.run cp -Rf $file work/
+            packageFolder $file tcltls-package
+        }
+
+    }
+
+}
+
+@ {dist1.build "Build DIST1 Packages"} {
+
+    > tcl9.build
+    > tk9.build
+    > dist1.tcllib.build
+    > dist1.tklib.build
+    > dist1.tcltls.build
+    > dist1.tclx.build
+
+}
+
+vars.define dist1.release 250501
+
 @ {dist1.package "Create a DIST1 Package"} {
 
-    > tcl9.packages
-    > tk9.packages
-    > tcllib.build
-    > tklib.build
+    > dist1.build
+    
 
     ## Create an archive folder with all libraries in
     ## For Dist Kit, use the archive folder lib/ as source of additional libraries
-
     files.inDirectory ${::buildDir}/dist/tcl9-dist1 {
+        
+        
+       
 
-        files.delete work
-        files.mkdir work
+        set distinstallPrefix tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        files.requireOrRefresh [file tail $distinstallPrefix].tar.gz  dist1-package {
 
-         files.withGlobAll {
+            files.delete *.tar.gz
+            files.delete $distinstallPrefix
+            files.mkdir $distinstallPrefix
+
+            files.withGlobAll {
             ../../install/tcl9-*linux*static*/* 
             ../../install/tk9-*linux*static*/* 
             ../../install/tcllib-*linux*/* 
-            ../../install/tklib-*linux*/*} {
-            #files.cp $file work/
-            log.info "Copying $file into work"
-            exec.run cp -Rf $file work/
-         }
+            ../../install/tklib-*linux*/*
+            ../../install/tcltls-*linux*/*
+            ../../install/tclx-*linux*/*} {
+                log.info "Copying $file into $distinstallPrefix"
+                exec.run cp -Rf $file $distinstallPrefix/
+                
+            }
+            files.compressDir $distinstallPrefix [file tail $distinstallPrefix].tar.gz 
+        }   
+        
+
+        buildSetMingw
+
+        set distinstallPrefix tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        files.requireOrRefresh [file tail $distinstallPrefix].zip   dist1-package {
+
+            files.delete *.zip
+            files.delete $distinstallPrefix
+            files.mkdir $distinstallPrefix
+
+            files.withGlobAll {
+            ../../install/tcl9-*mingw*static*/* 
+            ../../install/tk9-*mingw*static*/* 
+            ../../install/tcllib-*linux*/* 
+            ../../install/tklib-*linux*/*
+            ../../install/tclx-*mingw*/*} {
+                log.info "Copying $file into $distinstallPrefix"
+                exec.run cp -Rf $file $distinstallPrefix/
+                
+            }
+            files.compressDir $distinstallPrefix [file tail $distinstallPrefix].zip 
+        }   
+        
+
+        buildReset
+
+
+        kissb.args.contains --release {
+            files.withGlobAll {*.tar.gz *.zip} {
+                log.info "Uploading $file to S3..."
+                s3copy $file tcl9/dist1/${::dist1.release}/
+            }
+        }
+    }
+
+    
+
+    
+}
+
+@ {dist1.kit "Create Kit KISSB DIST1 TCL"} {
+
+    > dist1.package
+    
+    files.inDirectory ${::buildDir}/dist/tcl9-dist1 {
+        
+        ## Linux Kit 
+        set distFolder tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        set kitName tcl9-dist1kit-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+
+        files.requireOrRefresh $kitName dist1-tclkit {
+
+            exec.run $distFolder/bin/tclsh9.0 ${::kissb.projectFolder}/kit_creator.tcl --name $kitName
+            #tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor}
+        }
+
+        ## Win Kit
+        buildSetMingw
+
+        set distFolder tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        set kitName tcl9-dist1kit-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        files.requireOrRefresh ${kitName}.exe dist1-tclkit {
+
+            exec.run $distFolder/bin/tclsh90s.exe ${::kissb.projectFolder}/kit_creator.tcl --name $kitName
+            #tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor}
+        }
+
+        buildReset
+
+        ## Release
+        kissb.args.contains --release {
+            files.withGlobAll {tcl9-dist1kit*} {
+                log.info "Uploading $file to S3..."
+                s3copy $file tcl9/dist1/${::dist1.release}/
+            }
+        }
     }
 }
 
-@ {image-dist1-tcl9 "Create Image for KISSB DIST1 TCL"} {
+@ {dist1.image "Create Image for KISSB DIST1 TCL"} {
 
     > images-tcl
     > build-tcllib
@@ -684,38 +848,81 @@ proc getSourceFromTar {req tar url} {
     }
 }
 
-@ {package-dist1-tcl9 "Package Dist"} {
+###############
+## Signing ####
 
-    package require kissb.tcl9.kit
+vars.define sign.defaultKey "E24253BA23A2452F"
 
-    puts "args: $args"
-    
-    # Copy Install from Image
-    files.inDirectory $::buildDir/dist/dist1-tcl9 {
+proc signSha256File file {
 
-        set archName tcl${::tcl.version.minor}-bin-dist1-static
-        files.require $archName.tar.gz {
-            
-            > image-dist1-tcl9
+    exec.run sha256sum -b $file > ${file}.sha256
+    return ${file}.sha256
+}
 
-            files.delete ${__f}
-            docker.image.run rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor} -args {--entrypoint /bin/bash} -imgArgs [list -c "cp -Rf /install-tcl/ /build/$archName"]
-            files.tarDir $archName ${__f}
-        }
+@ {sign.tcl9 "Sign TCL9 Released files"} {
 
-      
-        files.requireOrRefresh tclkit-dist1-${::tcl.version.minor} TCLKIT {
-            tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor}
-        }
+    files.inDirectory ${::buildDir}/sign {
 
-        kissb.args.contains --release {
-            log.info "Uploading tclkit-dist1-${::tcl.version.minor} to S3..."
-            rclone.run copy -P --s3-acl=public-read tclkit-dist1-${::tcl.version.minor} ovhs3:kissb/tcl9-dist1/
-            rclone.run copy -P --s3-acl=public-read $archName.tar.gz ovhs3:kissb/tcl9-dist1/
-            
-        }
-        
+        set basePath tcl9/9.0.1/250501
+        set baseUrl https://kissb.s3.de.io.cloud.ovh.net/$basePath
+        foreach file [s3List $basePath --exclude *.sha256*] {
+            log.info "Signing $file"
+
+            files.requireOrRefresh ${file}.sha256.asc sign-tcl9 {
+
+                    ## Get Package
+                set downloadedFile [files.downloadOrRefresh $baseUrl/$file sign]
+
+                ## Sign
+                set checksumFile [signSha256File ${downloadedFile}]
+                files.delete ${checksumFile}.asc
+                exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile 
+                exec.run gpg --verify ${checksumFile}.asc $checksumFile
+            }
+
+            ## Upload
+            kissb.args.contains --publish {
+                s3copy ${checksumFile}.asc $basePath
+                s3copy ${checksumFile} $basePath
+            }
+
+        } 
+
     }
-
     
+
+}
+
+@ {sign.dist1 "Sign TCL9 Released files"} {
+
+    files.inDirectory ${::buildDir}/sign {
+
+        set basePath tcl9/dist1/250501
+        set baseUrl https://kissb.s3.de.io.cloud.ovh.net/$basePath
+        foreach file [s3List $basePath --exclude *.sha256*] {
+            log.info "Signing $file"
+
+            files.requireOrRefresh ${file}.sha256.asc sign-tcl9 {
+
+                    ## Get Package
+                set downloadedFile [files.downloadOrRefresh $baseUrl/$file sign]
+
+                ## Sign
+                set checksumFile [signSha256File ${downloadedFile}]
+                files.delete ${checksumFile}.asc
+                exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile 
+                exec.run gpg --verify ${checksumFile}.asc $checksumFile
+            }
+
+            ## Upload
+            kissb.args.contains --publish {
+                s3copy ${checksumFile}.asc $basePath
+                s3copy ${checksumFile} $basePath
+            }
+
+        } 
+
+    }
+    
+
 }
