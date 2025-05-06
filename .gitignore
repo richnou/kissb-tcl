@@ -5,6 +5,8 @@ build
 dist
 kitcreator-trunk*
 rclone.conf
+__pycache__
+
 
 # Local Netlify folder
 .netlify

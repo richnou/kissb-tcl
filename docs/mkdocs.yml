@@ -47,6 +47,7 @@ theme:
     - content.code.copy
     - content.action.edit
     - toc.integrate
+    - content.tooltips
 markdown_extensions:
   - admonition
   - pymdownx.details

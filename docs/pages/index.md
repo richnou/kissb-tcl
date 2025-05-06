@@ -1,9 +1,9 @@
 ---
-title: TCL9 distributions
+title: TCL9 Binaries
 description:  Download optimized TCL 9 binary builds, single-file executables (TclKit), and Docker images. Includes static and shared builds for easy deployment on Linux systems.
 ---
 
-# TCL 9 
+# TCL9 Binaries
 
 ## About
 
@@ -13,7 +13,7 @@ Our goal is to provide the TCL community a repository with reproducable builds f
 
 Additionally, we are building a TCL distribution with some popular libraries like tcllib or tcltls, alongside some useful utilities for users to run legacy TCL scripts or write new TCL apps even faster.
 
-The Packages provided are hosted in an S3 Object storage bucket hosted in Europe by OVH.
+The Packages provided are hosted in an S3 Object storage bucket hosted in Europe by OVH, and are signed with our PGP Signing Key - to verify builds see [Here](./signing.md)
 
 ## Installation options 
 
@@ -23,6 +23,27 @@ Packages for Linux distributions are not provided but enough options are availab
 - Binary archives provide bin/,lib/,include/,share/ folders for users to install at their convienience
 - Single file interpreters (Kit) 
 - [TCL Wrapper script](#tcltk-wrapper) (tclshw or wishw) that will download a local TCL Kit, in the same fashion as tools like Maven or Gradle Wrapper.
+
+## Release: TCL 9.0.1 / 250501
+
+This Release uses TCL 9.0.1 as baseline Version and provides following packages:
+
+| Package | Version  | Platform | Download |
+|----|----| ------|--------|
+|TCL9 shared   | 9.0.1 | RHEL8          | {{makeS3Links(s3.tcl901_250501+"/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz")}} |
+|TCL9 static   | 9.0.1 | RHEL8          | {{makeS3Links(s3.tcl901_250501+"/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz")}}         |
+|TCL9 shared   | 9.0.1 | Mingw32 Win64  | {{makeS3Links(s3.tcl901_250501+"/tcl9-x86_64-w64-mingw32-win64-shared-9.0.1.zip")}}  |
+|TCL9 static   | 9.0.1 | Mingw32 Win64  | {{makeS3Links(s3.tcl901_250501+"/tcl9-x86_64-w64-mingw32-win64-static-9.0.1.zip")}}  |
+|TK9 shared    | 9.0.1 | RHEL8          | {{makeS3Links(s3.tcl901_250501+"/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz")}}  |
+|TK9 static    | 9.0.1 | RHEL8          | {{makeS3Links(s3.tcl901_250501+"/tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz")}} |
+|TK9 shared    | 9.0.1 | Mingw32 Win64  | {{makeS3Links(s3.tcl901_250501+"/tk9-x86_64-w64-mingw32-win64-shared-9.0.1.zip")}}  |
+|TK9 static    | 9.0.1 | Mingw32 Win64  | {{makeS3Links(s3.tcl901_250501+"/tk9-x86_64-w64-mingw32-win64-static-9.0.1.zip")}} |
+|TCL9 KIT      | 9.0.1 | RHEL8          | {{makeS3Links(s3.tcl901_250501+"/tclkit9-x86_64-redhat-linux-rhel8-9.0.1")}}         |
+|TCL9 KIT      | 9.0.1 | Mingw32 Win64  |  {{makeS3Links(s3.tcl901_250501+"/tclkit9-x86_64-w64-mingw32-win64-9.0.1.exe")}} |
+|TK9 KIT       | 9.0.1 | RHEL8          |  {{makeS3Links(s3.tcl901_250501+"/tkkit9-x86_64-redhat-linux-rhel8-9.0.1")}}        |
+|TK9 KIT Light | 9.0.1 | RHEL8          |  {{makeS3Links(s3.tcl901_250501+"/tkkit9-x86_64-redhat-linux-rhel8-light-9.0.1")}}        |
+|TK9 KIT       | 9.0.1 | Mingw32 Win64  |  {{makeS3Links(s3.tcl901_250501+"/tkkit9-x86_64-w64-mingw32-win64-9.0.1.exe")}} |
+|TK9 KIT Light | 9.0.1 | Mingw32 Win64  | {{makeS3Links(s3.tcl901_250501+"/tkkit9-x86_64-w64-mingw32-win64-light-9.0.1.exe")}}  |
 
 ## TCL9/Tk9 Binary Archives 
 
@@ -37,15 +58,10 @@ For both platforms, static and shared variants are provided:
 - Static builds are heavier in size but easier to use since users can directly invoke the tclsh or wish interpreters. They are also used to produce single file tcl applications (TCL Kit) via the zipfs package.
 
 
+    
+### TCL9 Archives 
 
-### TCL9 Archives
 
-| Package | Version | Release | Platform | Download |
-|----|----|------| ------|--------|
-|TCL9 shared    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz> |
-|TCL9 static    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz> |
-|TCL9 shared    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tcl9-x86_64-w64-mingw32-win64-shared-9.0.1.zip> |
-|TCL9 static    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tcl9-x86_64-w64-mingw32-win64-static-9.0.1.zip> |
 
 
 To install a binary archive, just unpack the tarball in a folder and setup your environment:
@@ -80,14 +96,6 @@ TK9 Archives are build for Linux and Windows as for Tcl9, in shared and static v
 !!! warning 
     When using shared variants, make sure the the TCL9 installation is available in and setup properly (see archive installation).
 
-| Package | Version | Release | Platform | Download |
-|----|----|------| ------|--------|
-|TK9 shared    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz> |
-|TK9 static    | 9.0.1  | 250501 | RHEL8 |          <{{s3.tcl901}}/250501/tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz> |
-|TK9 shared    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tk9-x86_64-w64-mingw32-win64-shared-9.0.1.zip> |
-|TK9 static    | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901}}/250501/tk9-x86_64-w64-mingw32-win64-static-9.0.1.zip> |
-
-
 To use TK9 archives, make sure that TCL9 is installed - in case you are using a shared TCL9 archive, don't forget to set the **LD_LIBRARY_PATH** environment variable as described previously.
 
 To easily get started, you can use a static build, however if TCL9 is not installed some standard libraries like Itcl won't be available:
@@ -121,16 +129,6 @@ For TK kits, two types of TK Kits are build:
 
 Users who want to create their own build using only the basic Tk distribution can use the light kit.
 
-The following kits are available: 
-
-| Package | Version | Release | Platform | Download |
-|----|----|------| ------|--------|
-|TCL9 KIT        | 9.0.1  | 250501 | RHEL8 |         <{{s3.tcl901_current}}/tclkit9-x86_64-redhat-linux-rhel8-9.0.1> |
-|TCL9 KIT        | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901_current}}/tclkit9-x86_64-w64-mingw32-win64-9.0.1.exe> |
-|TK9 KIT       | 9.0.1  | 250501 | RHEL8 |         <{{s3.tcl901_current}}/tkkit9-x86_64-redhat-linux-rhel8-9.0.1> |
-|TK9 KIT Light | 9.0.1  | 250501 | RHEL8 |         <{{s3.tcl901_current}}/tkkit9-x86_64-redhat-linux-rhel8-light-9.0.1> |
-|TK9 KIT       | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901_current}}/tkkit9-x86_64-w64-mingw32-win64-9.0.1.exe> |
-|TK9 KIT Light | 9.0.1  | 250501 | Mingw32 Win64 |  <{{s3.tcl901_current}}/tkkit9-x86_64-w64-mingw32-win64-light-9.0.1.exe> |
 
 For example on a linux system:
 
