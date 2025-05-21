@@ -15,13 +15,13 @@ Additionally, we are building a TCL distribution with some popular libraries lik
 
 The Packages provided are hosted in an S3 Object storage bucket hosted in Europe by OVH, and are signed with our PGP Signing Key - to verify builds see [Here](./signing.md)
 
-## Installation options 
+## Installation options
 
-Builds are distributed though a few different means to cover most user use cases. 
-Packages for Linux distributions are not provided but enough options are available: 
+Builds are distributed though a few different means to cover most user use cases.
+Packages for Linux distributions are not provided but enough options are available:
 
 - Binary archives provide bin/,lib/,include/,share/ folders for users to install at their convienience
-- Single file interpreters (Kit) 
+- Single file interpreters (Kit)
 - [TCL Wrapper script](#tcltk-wrapper) (tclshw or wishw) that will download a local TCL Kit, in the same fashion as tools like Maven or Gradle Wrapper.
 
 ## Release: TCL 9.0.1 / 250501
@@ -45,9 +45,9 @@ This Release uses TCL 9.0.1 as baseline Version and provides following packages:
 |TK9 KIT       | 9.0.1 | Mingw32 Win64  |  {{makeS3Links(s3.tcl901_250501+"/tkkit9-x86_64-w64-mingw32-win64-9.0.1.exe")}} |
 |TK9 KIT Light | 9.0.1 | Mingw32 Win64  | {{makeS3Links(s3.tcl901_250501+"/tkkit9-x86_64-w64-mingw32-win64-light-9.0.1.exe")}}  |
 
-## TCL9/Tk9 Binary Archives 
+## TCL9/Tk9 Binary Archives
 
-Binary Archives for TCL9 and Tk9 are build for both Linux and Windows Platforms: 
+Binary Archives for TCL9 and Tk9 are build for both Linux and Windows Platforms:
 
 - Linux binaries are build under a Rocky Linux 8 Environment (RHEL8), which should provide compatibility with most user's distributions
 - Windows binaries are cross-compiled from RockyLinux 8 using Mingw compiler.
@@ -58,8 +58,8 @@ For both platforms, static and shared variants are provided:
 - Static builds are heavier in size but easier to use since users can directly invoke the tclsh or wish interpreters. They are also used to produce single file tcl applications (TCL Kit) via the zipfs package.
 
 
-    
-### TCL9 Archives 
+
+### TCL9 Archives
 
 
 
@@ -69,7 +69,7 @@ To install a binary archive, just unpack the tarball in a folder and setup your 
 ~~~bash
 $ wget {{s3.tcl901_current}}/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz
 $ tar xvaf tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1.tar.gz
-$ export PATH=$(pwd)/tcl9-x86_64-redhat-linux-rhel8-shared/bin:$PATH 
+$ export PATH=$(pwd)/tcl9-x86_64-redhat-linux-rhel8-shared/bin:$PATH
 $ export LD_LIBRARY_PATH=$(pwd)/tcl9-x86_64-redhat-linux-rhel8-shared/lib # only required for shared packages, consider adding to .bashrc
 $ tclsh9.0 # Run TCLSH interpreter
 ~~~
@@ -91,9 +91,9 @@ PS D:\> Expand-Archive -Path tk9-x86_64-w64-mingw32-win64-shared-9.0.1.zip -Dest
 
 ### Tk9 Archives
 
-TK9 Archives are build for Linux and Windows as for Tcl9, in shared and static variants. 
+TK9 Archives are build for Linux and Windows as for Tcl9, in shared and static variants.
 
-!!! warning 
+!!! warning
     When using shared variants, make sure the the TCL9 installation is available in and setup properly (see archive installation).
 
 To use TK9 archives, make sure that TCL9 is installed - in case you are using a shared TCL9 archive, don't forget to set the **LD_LIBRARY_PATH** environment variable as described previously.
@@ -103,7 +103,7 @@ To easily get started, you can use a static build, however if TCL9 is not instal
 ~~~bash
 $ wget {{s3.tcl901_current}}/tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz
 $ tar xvaf tk9-x86_64-redhat-linux-rhel8-static-9.0.1.tar.gz
-$ export PATH=$(pwd)/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/bin:$PATH 
+$ export PATH=$(pwd)/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/bin:$PATH
 $ export LD_LIBRARY_PATH=$(pwd)/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/lib # only required for shared packages, consider adding to .bashrc
 $ wish9.0 # Run Wish interpreter
 ~~~
@@ -122,7 +122,7 @@ An alternative way to quickly run TCL9/Tk9 is to run a single file application w
 
 The TCL Kit is a statically build TCL interpreter, it can be used to produce new single file applications with the user's application or libraries.
 
-For TK kits, two types of TK Kits are build: 
+For TK kits, two types of TK Kits are build:
 
 - Light kits marked **-light** are only produced using wish static and include the standard tcl library
 - Standard kits (not light) are produced with wish static and include tcl library extra libraries like itcl
@@ -160,50 +160,107 @@ The wrapper scripts are simple bash scripts called **tclshw** and **wishw** whic
     $ ./wishw SCRIPT # Run wish
 
 
-## TCL Docker Image 
+## TCL/Tk Docker Image
 
-Our TCL Build system uses docker as build environment and also provides runtime images. 
+Our TCL Build system uses docker as build environment and also provides runtime images.
 
 For TCL scripts, users can easily run using the tclsh images.
 
-| Image | TCL Version | Docker Hub Link |
+| Image | TCL Version | Registry |
 |----|---------------|-------------------|
-|rleys/kissb-tclsh9-static:9.0.1|9.0.1| <https://hub.docker.com/repository/docker/rleys/kissb-tclsh9-static/general> |
-|rleys/kissb-tclsh9-shared:9.0.1|9.0.1| <https://hub.docker.com/repository/docker/rleys/kissb-tclsh9-static/general> |
+|rleys/kissb-tclsh9-shared:latest|9.0.1| {{makeDockerHubLinks("rleys/kissb-tclsh9-shared")}} |
+|rleys/kissb-tclsh9-static:latest|9.0.1| {{makeDockerHubLinks("rleys/kissb-tclsh9-static")}} |
+|rleys/kissb-wish9-shared:latest|9.0.1| {{makeDockerHubLinks("rleys/kissb-wish9-shared")}} |
+|rleys/kissb-wish9-static:latest|9.0.1| {{makeDockerHubLinks("rleys/kissb-wish9-static")}} |
 
+!!! warning
+    Note that the image runs script from the /app folder, therefore users must map the local folder containing the tcl scripts to the container's /app directory.
 
-**Note that the image runs script from the /app folder, therefore users must map the local folder containing the tcl scripts to the container's /app directory.**
+TCL/Tk is installed within the Docker image under the `/usr/local` directory, alongside a dedicated `/install-tcl` directory.
+This latter location provides access to the extracted binaries for further customization or replacement of specific libraries.
 
-### Interactive Example 
+### Interactive Example
 
 To quickly spin a tclsh interpreter, just run the image in interactive mode with pty allocation.
 The **tclsh** interpreter is run through **rlwrap** to allow command history:
 
 ~~~bash
-$ docker run -it -v .:/app rleys/kissb-tclsh9-static:9.0.1  # Run REPL
+podman run -it -v $(pwd):/app {{images.tcl9_current_static}}  # Run REPL
 ~~~
 
-### Script Example 
+### Script Example
 
-For example to run the following hello world script:
+To execute a simple "hello world" script, the following command sequence can be employed:
 
-~~~tcl
+~~~tcl {title=hello.tcl}
 puts "Hello from tcl version [info tclversion]"
 ~~~
 
-~~~bash
-$ docker run -v .:/app rleys/kissb-tclsh9-static:9.0.1 helloworld.tcl # Run script
-~~~
+
+```bash
+podman run -it {{images.tcl9_current_static}} -v $(pwd):/app ./hello.tcl # Without SELinux
+podman run -it {{images.tcl9_current_static}} -v $(pwd):/app:Z ./hello.tcl # With SELinux
+```
+
+This command initiates a container based on the `{{images.tcl9_current_static}}` image.
+The `-it` flag enables interactive mode, allocating a pseudo-TTY for seamless interaction.
+The `-v $(pwd):/app` argument mounts the current working directory to the `/app` directory within the container, effectively making the script accessible.
+Finally, `./hello.tcl` specifies the script to be executed within the container's environment.
+
+!!! note
+    In case you are running SELinux and are getting "Permission denied" on file execution, add the **:Z** argument to volume mapping to let podman label the mapping for SELinux
+
+!!! tip
+    If your script needs to write data and should run with your local user id, add the **-u $(id -u)** argument to the run command.
 
 
-### TCL installation path
+### Tk Application
 
-TCL is installed in the /install-tcl folder in the image, users can copy that folder out of the image if needed to extract the binaries or replace some libraries
+Running Tk applications under Linux is slightly more difficult using docker images since the **wish** executable should be able to access the display port.
 
-## Issue reporting and Contributions 
+For example running a script in the local folder would give an error accessing display :0
 
-For feedback, requests and issues please use the Github issue tracker 
+```bash
+podman run -it {{images.wish9_current_static}} -v $(pwd):. ./SCRIPT.tcl
+application-specific initialization failed: couldn't connect to display ":0"
+%
+```
+
+Users can try to run the container in host network mode, however some more issues like SELinux policies might come up.
+
+An easy way to use wish using docker/podman is via [distrobox](https://distrobox.it), which is a wrapper around docker/podman which adds usefule extensions
+to images when running commands, including supporting X11 applications.
+
+
+To create a distrobox deleted after execution:
+
+```bash
+distrobox ephemeral --image {{images.wish9_current_static}} -n wish9 -- wish9.0 SCRIPT.TCL
+```
+
+To create a wish distrobox:
+
+```bash
+distrobox create --image {{images.wish9_current_static}} -n wish9
+```
+
+!!! tip
+    You can use our .init file directly in the command line, or in a Distrobox manager like Distroshelf: <https://tcl9.kissb.dev/get/distrobox-wish9-latest.ini>
+
+    ```bash
+    distrobox assemble create --file https://tcl9.kissb.dev/get/distrobox-wish9-latest.ini
+    ```
+
+
+
+To enter the box, run the script then exit:
+
+```bash
+distrobox enter wish9 -- wish9.0 hello.tcl
+```
+
+## Issue reporting and Contributions
+
+For feedback, requests and issues please use the Github issue tracker
 
 <https://github.com/richnou/kissb-tcl>
-
-

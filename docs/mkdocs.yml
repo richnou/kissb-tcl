@@ -6,8 +6,7 @@ docs_dir: pages
 plugins:
   - exclude:
       glob:
-        - '**/~*'
-  - drawio_file
+        - "**/~*"
   - search
   - kroki
   - git-revision-date
@@ -20,7 +19,7 @@ plugins:
   - glightbox
   - macros:
       include_yaml:
-            - data/global.variables.yml
+        - data/global.variables.yml
   - table-reader:
       data_path: "."
       allow_missing_files: True
@@ -71,6 +70,6 @@ markdown_extensions:
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
-      title: 'Table of Contents'
-      toc_depth: '2-5'
+      title: "Table of Contents"
+      toc_depth: "2-5"
       permalink: true
