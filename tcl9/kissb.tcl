@@ -2,28 +2,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-package require kissb.builder.podman
+package require kissb.builder.container
 package require kissb.docker
 package require kissb.builder.rclone
 
+# Inits
 rclone.init
-
-builder.selectDockerRuntime
-
+builder.container.init
 
 
 set tclConfigureArgs {}
 set tkConfigureArgs {}
 
 
-vars.set variants  {static shared}
-vars.set buildDir .kb/build
+vars.define variants  {static shared}
+vars.define buildDir .kb/build
 
 vars.define tcl.version.major 9.0
 vars.define tcl.version.minor 9.0.1
-
-
-
 
 vars.define tcl.variants {static shared}
 
@@ -41,6 +37,7 @@ proc buildSetMingw args {
     vars.set build.os           win64
     vars.set build.targetString ${::build.host}-${::build.os}
 }
+
 proc buildReset args {
     vars.revert build.host build.cc build.os build.targetString
 }
@@ -49,10 +46,13 @@ proc buildReset args {
 # If release requested, ensure the release tag was set
 vars.define release.tag -doc "Release Number like a date in format YYMMdd to sort uploaded files in S3" 0
 kissb.args.contains --release {
+
     if {${::release.tag}==0} {
         log.fatal "Requesting a release without a release tag, please set RELEASE_TAG env to something in format YYMMdd"
     }
 }
+
+
 
 # S3 upload helper
 vars.define s3.dryRun -doc "Dry run S3, set to S3_DRYRUN to 0 to upload" 1
@@ -62,6 +62,7 @@ proc s3copy {local remote args} {
         lappend s3args --dry-run
         log.warn "S3 is in dry run mode, nothing is uploaded, remote path is $remote"
     }
+
     rclone.run copy {*}$s3args -P --s3-acl=public-read {*}$args $local ovhs3:kissb/$remote
 }
 
@@ -72,14 +73,14 @@ proc s3List {remote args} {
 }
 
 # Prepare builder image
-docker.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
+builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
 proc getSourceFromTar {req tar url} {
 
     files.require $req {
         files.require $tar {
             files.download $url $tar
-            
+
         }
         files.extract $tar
     }
@@ -102,27 +103,27 @@ proc packageFolder {folder refresh} {
 
 @ tcl9.build {
 
-    
+
     files.inDirectory $::buildDir {
 
         # get source
         getSourceFromTar tcl${::tcl.version.minor}/unix tcl${::tcl.version.minor}-src.tar.gz \
                         http://prdownloads.sourceforge.net/tcl/tcl${::tcl.version.minor}-src.tar.gz
-        
+
         # Build static and shared variants
         foreach variant ${::tcl.variants} {
-            
+
             set installPrefix   install/tcl9-${::build.targetString}-${variant}-${::tcl.version.minor}
             set configArgs      --host=${::build.host}
             set sharedLibName   [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "libtcl90.dll.a": "libtcl${::tcl.version.major}.so"}]
             set staticLibName   [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "libtcl90.a": "libtcl${::tcl.version.major}.a"}]
-            
+
             switch $variant {
-                static { 
+                static {
                     set reqOutput ${installPrefix}/lib/$staticLibName
                     lappend configArgs --disable-shared
                 }
-                shared { 
+                shared {
                     set reqOutput ${installPrefix}/lib/$sharedLibName
                 }
             }
@@ -131,7 +132,7 @@ proc packageFolder {folder refresh} {
             set compileDir [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "win": "unix"}]
 
             files.requireOrRefresh $reqOutput tcl {
-            
+
                 log.warn "Building TCL $reqOutput"
 
                 files.delete ${installPrefix}
@@ -145,12 +146,12 @@ proc packageFolder {folder refresh} {
                     make distclean
                     CC=${::build.cc} ./configure --prefix=/build/${installPrefix} $configArgs
                     make install -j8
-                    
+
                 }
             }
-            
+
         }
-        
+
     }
 }
 
@@ -188,17 +189,17 @@ proc packageFolder {folder refresh} {
             set tclPrefix     install/tcl9-${::build.targetString}-${variant}-${::tcl.version.minor}
             set sharedLibName   [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "libtcl9tk90.dll.a": "libtcl9tk${::tcl.version.major}.so"}]
             set staticLibName   [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "libtcl9tk90.a": "libtcl9tk${::tcl.version.major}.a"}]
-            
+
             switch $variant {
-                static { 
+                static {
                     set reqOutput $installPrefix/lib/$staticLibName
                     lappend configArgs --disable-shared
                 }
-                shared { 
+                shared {
                     set reqOutput $installPrefix/lib/$sharedLibName
                 }
             }
-            
+
             set compileDir [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "win": "unix"}]
 
 
@@ -208,17 +209,17 @@ proc packageFolder {folder refresh} {
                     mkdir -p /build/$installPrefix
                     make distclean
                     CC=${::build.cc}  ./configure --enable-64bit --prefix=/build/$installPrefix --with-tcl=/build/$tclPrefix/lib $configArgs
-                    make install -j8   
+                    make install -j8
                 }
             }
         }
-        
-        
-        
-    }
-    
 
-    
+
+
+    }
+
+
+
 
 }
 
@@ -249,8 +250,8 @@ proc packageFolder {folder refresh} {
 
 
     # Build all platforms
-    > tcl9.build.all    
-    
+    > tcl9.build.all
+
     ## Make Packages
     files.inDirectory $::buildDir/dist/tcl9 {
 
@@ -286,21 +287,29 @@ proc packageFolder {folder refresh} {
 
 @ {tcl9.images "makes shared and static images for runtime and development"} {
 
-    > tcl9.package
-    
+    > tcl9.build.all
+
     files.inDirectory $::buildDir {
-        
+
         # Require CriTCL to add to dev image
         getSourceFromTar ./critcl-3.3.1/build.tcl critcl-3.3.1.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/3.3.1.tar.gz
 
         foreach variant $::variants {
-            docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:${::tcl.version.minor}
-            docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant-dev  rleys/kissb-tclsh9-$variant-rocky8-dev:${::tcl.version.minor}
+            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:latest
+            #docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant-dev  rleys/kissb-tclsh9-${::tcl.version.minor}-$variant-rocky8-dev:${::tcl.version.minor}
         }
     }
 
     ## Push to docker
     kissb.args.contains --release {
+
+        builder.container.image.push  rleys/kissb-tclsh9-static:latest docker.io/rleys/kissb-tclsh9-static:latest
+        builder.container.image.push  rleys/kissb-tclsh9-shared:latest docker.io/rleys/kissb-tclsh9-shared:latest
+
+        builder.container.image.push  rleys/kissb-tclsh9-static:latest docker.io/rleys/kissb-tclsh9-static:${::tcl.version.minor}-${::release.tag}
+        builder.container.image.push  rleys/kissb-tclsh9-shared:latest docker.io/rleys/kissb-tclsh9-shared:${::tcl.version.minor}-${::release.tag}
+
+        return
         docker.push  rleys/kissb-tclsh9-static:${::tcl.version.minor}
         docker.push  rleys/kissb-tclsh9-shared:${::tcl.version.minor}
         docker.push  rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor}
@@ -329,11 +338,11 @@ proc packageFolder {folder refresh} {
 
             if {[string match *x86_64-w64-mingw32* $file] && [os.isLinuxWSL]} {
                 log.info "Creating Win64 KIT"
-                
+
                 files.requireOrRefresh ${kitName}.exe tcl9-kit {
                    exec.run ${file}/bin/tclsh90s.exe ${::kissb.projectFolder}/kit_creator.tcl --name ${kitName}
                 }
-                
+
             } else {
                 log.warn "Creating Linux Kit"
                 files.requireOrRefresh ${kitName} tcl9-kit {
@@ -380,7 +389,7 @@ proc packageFolder {folder refresh} {
                 files.compressDir $file $archFile
             }
 
-            
+
 
         }
 
@@ -399,19 +408,36 @@ proc packageFolder {folder refresh} {
 @ {tk9.images "Make TK images for runtime and development"} {
 
 
-    > tk9.package
+    > tk9.build.all
+
 
     files.inDirectory $::buildDir {
-        
+
         # Require CriTCL to add to dev image
         getSourceFromTar ./critcl-3.3.1/build.tcl critcl-3.3.1.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/3.3.1.tar.gz
 
         foreach variant $::variants {
-            docker.image.build ${::kissb.projectFolder}/Dockerfile.wish9-$variant      rleys/kissb-wish9-$variant:${::tcl.version.minor}
-            docker.image.build ${::kissb.projectFolder}/Dockerfile.wish9-$variant-dev  rleys/kissb-wish9-$variant-rocky8-dev:${::tcl.version.minor}
+            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.wish9-$variant  rleys/kissb-wish9-$variant:latest
+            #docker.image.build ${::kissb.projectFolder}/Dockerfile.wish9-$variant-dev  rleys/kissb-wish9-$variant-rocky8-dev:${::tcl.version.minor}
+        }
+
+
+
+        ## Push to docker
+        kissb.args.contains --release {
+            builder.container.image.push  rleys/kissb-wish9-static:latest docker.io/rleys/kissb-wish9-static:latest
+            builder.container.image.push  rleys/kissb-wish9-shared:latest docker.io/rleys/kissb-wish9-shared:latest
+
+            builder.container.image.push  rleys/kissb-wish9-static:latest docker.io/rleys/kissb-wish9-static:${::tcl.version.minor}-${::release.tag}
+            builder.container.image.push  rleys/kissb-wish9-shared:latest docker.io/rleys/kissb-wish9-shared:${::tcl.version.minor}-${::release.tag}
+
+            #builder.container.image.push  rleys/kissb-tclsh9-static:${::tcl.version.minor}
+            #builder.container.image.push  rleys/kissb-tclsh9-shared:${::tcl.version.minor}
+            #builder.container.image.push  rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor}
+            #builder.container.image.push  rleys/kissb-tclsh9-shared-rocky8-dev:${::tcl.version.minor}
         }
     }
-    
+
 }
 
 @ {tk9.kits "Make a basic TK9 Kit"} {
@@ -421,16 +447,17 @@ proc packageFolder {folder refresh} {
     ## Make TK9 Kits for all static installations
     files.inDirectory $::buildDir/dist/tk9-kit {
 
-        refresh.with tk9-kit { files.delete *} 
+        refresh.with tk9-kit { files.delete * }
 
         files.withGlobAll ../../install/tk9-*static* {
 
             log.info "Creating KIT for: ${file}"
 
+
             if {[string match *x86_64-w64-mingw32* $file] && [os.isLinuxWSL]} {
                 log.info "Creating Win64 KIT"
 
-            
+
                 set kitName [string map {tk9 tkkit9 -static "-light"} [file tail $file]]
                 files.requireOrRefresh ${kitName}.exe tk9-kit {
                     exec.run ${file}/bin/wish90s.exe ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tklight-win64 --name $kitName
@@ -439,12 +466,12 @@ proc packageFolder {folder refresh} {
                 set kitName [string map {tk9 tkkit9 -static ""} [file tail $file]]
                 set tclInstallName [string map {tk9 tcl9} $file]
                 files.requireOrRefresh ${kitName}.exe tk9-kit {
-                    exec.run ${tclInstallName}/bin/tclsh90s.exe ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tk-win64 --extract 
+                    exec.run ${tclInstallName}/bin/tclsh90s.exe ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tk-win64 --extract
                     exec.run ${file}/bin/wish90s.exe ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tk-win64 --continue  --name $kitName
                 }
-                    
-               
-                
+
+
+
             } else {
                 log.warn "Creating Linux Kit"
 
@@ -456,11 +483,11 @@ proc packageFolder {folder refresh} {
                 set kitName [string map {tk9 tkkit9 -static ""} [file tail $file]]
                 set tclInstallName [string map {tk9 tcl9} $file]
                 files.requireOrRefresh ${kitName} tk9-kit {
-                    exec.run ${tclInstallName}/bin/tclsh9.0 ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tk-linux --extract 
+                    exec.run ${tclInstallName}/bin/tclsh9.0 ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tk-linux --extract
                     exec.run ${file}/bin/wish9.0 ${::kissb.projectFolder}/kit_creator.tcl --outdir dist-tk-linux --continue  --name $kitName
                 }
 
-                
+
             }
 
         }
@@ -473,7 +500,7 @@ proc packageFolder {folder refresh} {
                 #rclone.run copy --dry-run -v -P --s3-acl=public-read $file ovhs3:kissb/
             }
         }
-        
+
     }
 
 
@@ -484,7 +511,7 @@ proc packageFolder {folder refresh} {
         files.requireOrRefresh tclkit-${::tcl.version.minor} TCLKIT {
             tcl9.kit.make -image rleys/kissb-wish9-static:${::tcl.version.minor}
         }
-        
+
     }
 }
 
@@ -503,9 +530,9 @@ proc packageFolder {folder refresh} {
         set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
         set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
 
-        #set buildImage      
+        #set buildImage
         files.requireOrRefresh $installPrefix/lib/tcllib2.0/pkgIndex.tcl tcllib {
-            
+
             files.delete $installPrefix/
             getSourceFromTar ./tcllib-2.0/configure tcllib-2.0.tar.gz https://core.tcl-lang.org/tcllib/uv/tcllib-2.0.tar.gz
 
@@ -515,7 +542,7 @@ proc packageFolder {folder refresh} {
                 mkdir -p /build/$installPrefix
                 CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/build/$tclPrefix/bin/$tclSh $configArgs
                 make clean
-                make install -j8   
+                make install -j8
             }
 
             #builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
@@ -524,11 +551,11 @@ proc packageFolder {folder refresh} {
             #    ./configure --help
             #    CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/install-tcl/bin/tclsh9.0 $configArgs
             #    make clean
-            #    make install -j8   
+            #    make install -j8
             #}
 
         }
-        
+
     }
 }
 
@@ -538,7 +565,7 @@ proc packageFolder {folder refresh} {
 
     #buildSetMingw
 
-    #>> tcllib.build 
+    #>> tcllib.build
 
     #buildReset
 }
@@ -553,9 +580,9 @@ proc packageFolder {folder refresh} {
         set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
         set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
 
-        #set buildImage      
+        #set buildImage
         files.requireOrRefresh $installPrefix/lib/tklib0.9/pkgIndex.tcl tcllib {
-            
+
             files.delete $installPrefix/
             getSourceFromTar ./tklib-0.9/configure tklib-0.9.tar.xz "https://core.tcl-lang.org/tklib/attachdownload/tklib-0.9.tar.xz?page=Downloads&file=tklib-0.9.tar.xz"
 
@@ -565,9 +592,9 @@ proc packageFolder {folder refresh} {
                 mkdir -p /build/$installPrefix
                 CC=${::build.cc} ./configure --prefix=/build/$installPrefix --with-tclsh=/build/$tclPrefix/bin/$tclSh $configArgs
                 make clean
-                make install -j8   
+                make install -j8
             }
-        } 
+        }
     }
 }
 
@@ -587,28 +614,28 @@ proc packageFolder {folder refresh} {
             files.require tclx-8.6.3/CHANGES {
                 exec.run git clone https://github.com/opendesignflow/tclx.git tclx-8.6.3
             }
-        
+
             builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
                 pushd tclx-8.6.3/
                 mkdir -p /build/$installPrefix
                 autoconf
                 make distclean
                 # --disable-shared
-                ./configure --help 
+                ./configure --help
                 ./configure --prefix=/build/$installPrefix \
                             --exec-prefix=/build/$installPrefix \
                             --with-tcl=/build/$tclPrefix/lib \
                             --with-tclinclude=/build/$tclPrefix/include \
                             $configArgs
-                
+
                 make -j8
-                make install   
+                make install
             }
         }
-        
+
     }
 
- 
+
 }
 
 @ {dist1.tclx.package "Package TCLX Library"} {
@@ -617,7 +644,7 @@ proc packageFolder {folder refresh} {
 
     buildSetMingw
 
-    >> dist1.tclx.build 
+    >> dist1.tclx.build
 
     #buildReset
 }
@@ -625,19 +652,19 @@ proc packageFolder {folder refresh} {
 
 @ {dist1.tcltls.build "Build for TCLLS library"} {
 
-        
+
     set tlcTLSVersion 1.7.22
     set tclTLSChecking e19f6b3f18
     set baseName tcltls-${tclTLSChecking}
 
     files.inDirectory ${::buildDir} {
 
-   
+
         set installPrefix   install/tcltls-${::build.targetString}-tcl${::tcl.version.minor}-2.0b1
         set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
         set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
 
-        #set buildImage      
+        #set buildImage
         files.requireOrRefresh install-tcltls/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
 
             files.delete $installPrefix/
@@ -649,7 +676,7 @@ proc packageFolder {folder refresh} {
             #        files.download https://kissb.s3.de.io.cloud.ovh.net/libs/libressl/4.0.0/libressl-x86_64-linux-rhel8-4.0.0.tar.gz libressl-x86_64-linux-rhel8-4.0.0.tar.gz
             #    }
             #    files.extract libressl-x86_64-linux-rhel8-4.0.0.tar.gz
-            #    
+            #
             #}
 
             #builder.image.run rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor} {
@@ -662,7 +689,7 @@ proc packageFolder {folder refresh} {
             #    make install
             #}
 
-          
+
             files.delete patches
             files.cp ${::kissb.projectFolder}/patches .
             #  rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor}
@@ -680,10 +707,10 @@ proc packageFolder {folder refresh} {
                             --with-tclinclude=/build/$tclPrefix/include
                 make clean
                 make -j8
-                make install   
+                make install
             }
         }
-        
+
     }
 
 
@@ -726,14 +753,14 @@ vars.define dist1.release 250501
 @ {dist1.package "Create a DIST1 Package"} {
 
     > dist1.build
-    
+
 
     ## Create an archive folder with all libraries in
     ## For Dist Kit, use the archive folder lib/ as source of additional libraries
     files.inDirectory ${::buildDir}/dist/tcl9-dist1 {
-        
-        
-       
+
+
+
 
         set distinstallPrefix tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
         files.requireOrRefresh [file tail $distinstallPrefix].tar.gz  dist1-package {
@@ -743,19 +770,19 @@ vars.define dist1.release 250501
             files.mkdir $distinstallPrefix
 
             files.withGlobAll {
-            ../../install/tcl9-*linux*static*/* 
-            ../../install/tk9-*linux*static*/* 
-            ../../install/tcllib-*linux*/* 
+            ../../install/tcl9-*linux*static*/*
+            ../../install/tk9-*linux*static*/*
+            ../../install/tcllib-*linux*/*
             ../../install/tklib-*linux*/*
             ../../install/tcltls-*linux*/*
             ../../install/tclx-*linux*/*} {
                 log.info "Copying $file into $distinstallPrefix"
                 exec.run cp -Rf $file $distinstallPrefix/
-                
+
             }
-            files.compressDir $distinstallPrefix [file tail $distinstallPrefix].tar.gz 
-        }   
-        
+            files.compressDir $distinstallPrefix [file tail $distinstallPrefix].tar.gz
+        }
+
 
         buildSetMingw
 
@@ -767,18 +794,18 @@ vars.define dist1.release 250501
             files.mkdir $distinstallPrefix
 
             files.withGlobAll {
-            ../../install/tcl9-*mingw*static*/* 
-            ../../install/tk9-*mingw*static*/* 
-            ../../install/tcllib-*linux*/* 
+            ../../install/tcl9-*mingw*static*/*
+            ../../install/tk9-*mingw*static*/*
+            ../../install/tcllib-*linux*/*
             ../../install/tklib-*linux*/*
             ../../install/tclx-*mingw*/*} {
                 log.info "Copying $file into $distinstallPrefix"
                 exec.run cp -Rf $file $distinstallPrefix/
-                
+
             }
-            files.compressDir $distinstallPrefix [file tail $distinstallPrefix].zip 
-        }   
-        
+            files.compressDir $distinstallPrefix [file tail $distinstallPrefix].zip
+        }
+
 
         buildReset
 
@@ -791,18 +818,18 @@ vars.define dist1.release 250501
         }
     }
 
-    
 
-    
+
+
 }
 
 @ {dist1.kit "Create Kit KISSB DIST1 TCL"} {
 
     > dist1.package
-    
+
     files.inDirectory ${::buildDir}/dist/tcl9-dist1 {
-        
-        ## Linux Kit 
+
+        ## Linux Kit
         set distFolder tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
         set kitName tcl9-dist1kit-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
 
@@ -876,7 +903,7 @@ proc signSha256File file {
                 ## Sign
                 set checksumFile [signSha256File ${downloadedFile}]
                 files.delete ${checksumFile}.asc
-                exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile 
+                exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile
                 exec.run gpg --verify ${checksumFile}.asc $checksumFile
             }
 
@@ -886,10 +913,10 @@ proc signSha256File file {
                 s3copy ${checksumFile} $basePath
             }
 
-        } 
+        }
 
     }
-    
+
 
 }
 
@@ -910,7 +937,7 @@ proc signSha256File file {
                 ## Sign
                 set checksumFile [signSha256File ${downloadedFile}]
                 files.delete ${checksumFile}.asc
-                exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile 
+                exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile
                 exec.run gpg --verify ${checksumFile}.asc $checksumFile
             }
 
@@ -920,9 +947,9 @@ proc signSha256File file {
                 s3copy ${checksumFile} $basePath
             }
 
-        } 
+        }
 
     }
-    
+
 
 }

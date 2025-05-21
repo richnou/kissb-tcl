@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+{ # this ensures the entire script is downloaded #
+
+## VERSION= 1.1
+
+## KISSB Wrapper script to start kissb using terminal without installation
+
+## Specify version here
+kissbChannel=dev 
+kissbVersion=250501
+
+
+kissbInstallFolder=.kb/install/${kissbChannel}
+kissbRuntimePath=${kissbInstallFolder}/kissb-${kissbVersion}
+if [[ ! -f ${kissbInstallFolder}/kissb-${kissbVersion} ]]
+then
+    # Download
+    echo "Downloading KISSB runtime..."
+    # Prepare local install folder and clean it
+    rm -Rf .kb/install/*
+    mkdir -p ${kissbInstallFolder}
+    wget -q --show-progress https://kissb.s3.de.io.cloud.ovh.net/kissb/${kissbChannel}/${kissbVersion}/kissb-${kissbVersion} -O ${kissbRuntimePath}
+    chmod +x ${kissbRuntimePath}
+
+    
+fi
+
+## Check if this script is running from file
+if [[ $0 == 'bash' ]]
+then
+    echo "Downloading wrapper script..."
+    wget -q https://kissb.dev/get/kissbw
+    chmod +x kissbw
+fi
+
+export KISSB_WRAPPER=1
+${kissbRuntimePath} $*
+
+} # this ensures the entire script is downloaded #
