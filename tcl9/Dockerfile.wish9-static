@@ -1,17 +1,31 @@
-FROM rockylinux/rockylinux:8
+FROM opensuse/leap:latest
 
-COPY install-tcl-x86_64-redhat-linux-rhel8-static-9.0.1 /install-tcl 
-COPY install-tk-x86_64-redhat-linux-rhel8-static-9.0.1 /install-tk
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/ /install-tcl
+COPY install/tk9-x86_64-redhat-linux-rhel8-static-9.0.1 /install-tcl
 
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/bin/* /usr/local/bin
+COPY install/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/bin/* /usr/local/bin
 
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/lib/* /usr/local/lib
+COPY install/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/lib/* /usr/local/lib
 
-#RUN zypper addrepo  https://download.opensuse.org/repositories/X11:XOrg/openSUSE_Tumbleweed/X11:XOrg.repo
-#RUN zypper -n refresh  | echo 'a'
-#RUN zypper -n install -y libX11 | echo 'a'
-RUN dnf install -y libX11
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/share/* /usr/local/share
+COPY install/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/share/* /usr/local/share
+
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/include/* /usr/local/include
+COPY install/tk9-x86_64-redhat-linux-rhel8-static-9.0.1/include/* /usr/local/include
+
+## Add Packages
+RUN zypper -n install rlwrap
+RUN zypper -n install patterns-base-x11
+
+## Add Default user
+RUN  useradd -U -m tcl
 
 ENV DISPLAY=:0
 
-WORKDIR /build
-ENTRYPOINT ["/install-tk/bin/wish9.0"]
+WORKDIR /app
+ENV RLWRAP_HOME=/tmp
+ENTRYPOINT ["/usr/bin/rlwrap","wish9.0"]
 
+USER tcl

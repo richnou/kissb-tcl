@@ -1,9 +1,21 @@
 FROM opensuse/leap:latest
 
-RUN zypper -n install rlwrap
-COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1 /install-tcl
 
+## TCL installation
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1            /install-tcl
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/bin/*      /usr/local/bin
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/lib/*      /usr/local/lib
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/share/*    /usr/local/share
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1/include/*  /usr/local/include
+
+## Add Packages
+RUN zypper -n install rlwrap
+
+## Add Default user
+RUN  useradd -U -m tcl
 
 WORKDIR /app
-ENTRYPOINT ["/usr/bin/rlwrap","/install-tcl/bin/tclsh9.0"]
+ENV RLWRAP_HOME=/tmp
+ENTRYPOINT ["/usr/bin/rlwrap","tclsh9.0"]
 
+USER tcl
