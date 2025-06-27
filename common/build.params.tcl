@@ -53,9 +53,9 @@ proc s3copy {local remote args} {
     set s3args {}
     if {${::s3.dryRun}} {
         lappend s3args --dry-run
-        log.warn "S3 is in dry run mode, nothing is uploaded, remote path is $remote"
+        log.warn "S3 is in dry run mode, nothing is uploaded, remote path is $remote - set S3_DRYRUN=0 to upload"
     }
-
+    log.success "Uploading $local to $remote"
     rclone.run copy {*}$s3args -P --s3-acl=public-read {*}$args $local ovhs3:kissb/$remote
 }
 

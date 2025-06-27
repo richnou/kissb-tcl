@@ -4,3 +4,4 @@ RUN dnf install -y --enablerepo=devel libcurl-devel bc bzip2 tcl libX11-devel zl
 RUN dnf install -y --enablerepo=devel openssl-devel
 RUN dnf install -y --enablerepo=devel openssl-static
 RUN dnf install -y --enablerepo=devel zlib-static
+RUN dnf install -y --enablerepo=devel cmake

@@ -31,6 +31,13 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
 }
 
+@ {tk9.build.win} {
+
+    buildSetMingw
+    > tk.build.generic
+    buildReset
+
+}
 
 @ {tk9.build.all} {
 
@@ -540,18 +547,86 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
 }
 
+
+@ {dist1.awthemes.build "Build to download and copy awthemes themes"} {
+    # https://sourceforge.net/projects/tcl-awthemes/files/
+
+
+    set awThemes awthemes-10.4.0
+
+    files.inDirectory $::buildDir/install {
+
+        files.require ${awThemes}/pkgIndex.tcl {
+            files.downloadOrRefresh https://sourceforge.net/projects/tcl-awthemes/files/${awThemes}.zip/download awthemese ${awThemes}.zip
+            files.extract ${awThemes}.zip
+        }
+
+    }
+
+}
+
+@ {dist1.gtktk.build "Build for Gtktk theme"} {
+    # https://github.com/Geballin/gtkTtk
+
+    set version  0.9
+
+
+
+    files.inDirectory $::buildDir/ {
+
+
+        files.require gtkTtk-${version} {
+            files.downloadOrRefresh https://github.com/Geballin/gtkTtk/archive/refs/tags/${version}.tar.gz gtktk-dl gtkTtk-${version}.tar.gz
+            files.extract gtkTtk-${version}.tar.gz
+        }
+
+        set installPrefix   install/gtkTtk-${version}-${::build.targetString}-tk${::tcl.version.minor}
+        files.requireOrRefresh $installPrefix/gtkTtk${version}/libgtkTtk0.9.so gtktk {
+
+            # Prepare builder image
+            builder.container.image.build [vars.get kissb.projectFolder]/Dockerfile.builder-tcltk9 rleys/kissb-builderwithtcltk9:latest
+
+
+            builder.container.image.run rleys/kissb-builderwithtcltk9 {
+                #tclsh <<< 'puts [lindex auto_path end]'
+                pushd gtkTtk-${version}
+                echo "Install to ../$installPrefix"
+                cmake -DCMAKE_INSTALL_PREFIX=../$installPrefix -DTCL_TCLSH=/usr/local/bin/tclsh9.0
+                #-DTCL_LIBRARY="/usr/local/lib" -DTK_LIBRARY="/usr/local/lib"
+                make
+                make install
+
+            }
+        }
+
+
+
+
+
+
+
+    }
+
+
+
+}
+
+
+
 @ {dist1.build "Build DIST1 Packages"} {
 
-    > tcl9.build
-    > tk9.build
+    > tcl9.build.all
+    > tk9.build.all
     > dist1.tcllib.build
     > dist1.tklib.build
     > dist1.tcltls.build
     > dist1.tclx.build
+    > dist1.awthemes.build
+    > dist1.gtktk.build
 
 }
 
-vars.define dist1.release 250501
+vars.define dist1.release [vars.get release.tag]
 
 @ {dist1.package "Create a DIST1 Package"} {
 
@@ -574,6 +649,7 @@ vars.define dist1.release 250501
 
             files.withGlobAll {
             ../../install/tcl9-*linux*static*/*
+            ../../install/tk9-*linux*shared*/*
             ../../install/tk9-*linux*static*/*
             ../../install/tcllib-*linux*/*
             ../../install/tklib-*linux*/*
@@ -581,6 +657,13 @@ vars.define dist1.release 250501
             ../../install/tclx-*linux*/*} {
                 log.info "Copying $file into $distinstallPrefix"
                 exec.run cp -Rf $file $distinstallPrefix/
+
+            }
+            files.withGlobAll {
+                ../../install/awthemes*/
+                ../../install/gtkTtk-*linux*/*} {
+                log.info "Copying $file into $distinstallPrefix"
+                exec.run cp -Rf $file $distinstallPrefix/lib
 
             }
             files.compressDir $distinstallPrefix [file tail $distinstallPrefix].tar.gz
@@ -598,6 +681,7 @@ vars.define dist1.release 250501
 
             files.withGlobAll {
             ../../install/tcl9-*mingw*static*/*
+            ../../install/tk9-*mingw*shared*/*
             ../../install/tk9-*mingw*static*/*
             ../../install/tcllib-*linux*/*
             ../../install/tklib-*linux*/*
@@ -636,24 +720,43 @@ vars.define dist1.release 250501
         set distFolder tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
         set kitName tcl9-dist1kit-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
 
-        files.requireOrRefresh $kitName dist1-tclkit {
+        files.requireOrRefresh $kitName dist1-kit {
 
-            exec.run $distFolder/bin/tclsh9.0 ${::kissb.projectFolder}/kit_creator.tcl --name $kitName
-            #tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor}
+            files.delete tcl9-dist1kit-*
+
+            # Run First wish static to copy tk lib to dist output
+            # Then copy distributions files like shared objects to dist
+            # Then create kit with tclsh to havea a kit not create a window at every execution
+            exec.run $distFolder/bin/wish9.0 ${::kissb.projectFolder}/kit_creator.tcl --name $kitName --extract
+            files.cp $distFolder/lib/*.so dist/
+            exec.run $distFolder/bin/tclsh9.0 ${::kissb.projectFolder}/kit_creator.tcl --continue --name $kitName
+
+
         }
 
         ## Win Kit
-        buildSetMingw
+        kissb.args.containsNot --nowin {
+            buildSetMingw
 
-        set distFolder tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
-        set kitName tcl9-dist1kit-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
-        files.requireOrRefresh ${kitName}.exe dist1-tclkit {
+            set distFolder tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+            set kitName tcl9-dist1kit-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+            files.requireOrRefresh ${kitName}.exe dist1-kit {
 
-            exec.run $distFolder/bin/tclsh90s.exe ${::kissb.projectFolder}/kit_creator.tcl --name $kitName
-            #tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor}
+                exec.run $distFolder/bin/wish90s.exe ${::kissb.projectFolder}/kit_creator.tcl --name $kitName --extract --outdir dist-win
+                files.cp $distFolder/lib/*.dll* dist-win/
+                files.mkdir dist-win/bin
+                files.cp $distFolder/bin/*.dll* dist-win/bin
+                # Override pkgIndex for Tk to properly find dll from kit
+                #files.cp tk9-pkgIndex.tcl dist-win/tk9.0/
+                exec cp -vf ${::kissb.projectFolder}/tk9-pkgIndex.tcl dist-win/tk9.0/pkgIndex.tcl
+                puts "=== Finish =="
+                exec.run $distFolder/bin/tclsh90s.exe ${::kissb.projectFolder}/kit_creator.tcl  --continue --nostdlib --name $kitName --outdir dist-win
+                #tcl9.kit.make -name tclkit-dist1 -image rleys/kissb-tclsh9-static-dist1:${::tcl.version.minor}
+            }
+
+            buildReset
+
         }
-
-        buildReset
 
         ## Release
         kissb.args.contains --release {
@@ -727,14 +830,15 @@ proc signSha256File file {
 
     files.inDirectory ${::buildDir}/sign {
 
-        set basePath tcl9/dist1/250501
+        set basePath tcl9/dist1/${::dist1.release}
         set baseUrl https://kissb.s3.de.io.cloud.ovh.net/$basePath
+        set signed {}
         foreach file [s3List $basePath --exclude *.sha256*] {
             log.info "Signing $file"
 
-            files.requireOrRefresh ${file}.sha256.asc sign-tcl9 {
+            files.requireOrRefresh ${file}.sha256.asc sign-dist1 {
 
-                    ## Get Package
+                ## Get Package
                 set downloadedFile [files.downloadOrRefresh $baseUrl/$file sign]
 
                 ## Sign
@@ -742,16 +846,24 @@ proc signSha256File file {
                 files.delete ${checksumFile}.asc
                 exec.run gpg --batch --local-user 0x${::sign.defaultKey} --output ${checksumFile}.asc --detach-sig $checksumFile
                 exec.run gpg --verify ${checksumFile}.asc $checksumFile
+
+
             }
+            lappend signed ${file}
 
             ## Upload
             kissb.args.contains --publish {
-                s3copy ${checksumFile}.asc $basePath
-                s3copy ${checksumFile} $basePath
+                s3copy ${file}.sha256.asc $basePath
+                s3copy ${file}.sha256 $basePath
             }
+
+
 
         }
 
+        foreach f $signed {
+            log.success "Signed file: $f"
+        }
     }
 
 

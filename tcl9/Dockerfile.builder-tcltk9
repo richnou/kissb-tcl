@@ -1,0 +1,27 @@
+FROM rleys/builder:rocky8
+
+RUN dnf install -y --enablerepo=devel libcurl-devel bc bzip2 tcl libX11-devel zlib-devel mingw64-gcc mingw64-cpp mingw64-gcc-c++ mingw64-winpthreads-static mingw32-pkg-config mingw32-libxml2-static libxml2-static libxml2-devel libxslt-devel
+RUN dnf install -y --enablerepo=devel openssl-devel
+RUN dnf install -y --enablerepo=devel openssl-static
+RUN dnf install -y --enablerepo=devel zlib-static
+RUN dnf install -y --enablerepo=devel cmake
+RUN dnf install -y --enablerepo=devel gtk3-devel gtk2-devel
+RUN dnf install -y --enablerepo=devel gdk-pixbuf2-xlib-devel
+
+
+# Copy TCL TK
+## TCL installation
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1 /install-tcl
+COPY install/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1 /install-tcl
+
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/bin/* /usr/local/bin
+COPY install/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1/bin/* /usr/local/bin
+
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/lib/* /usr/local/lib
+COPY install/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1/lib/* /usr/local/lib
+
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/share/* /usr/local/share
+COPY install/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1/share/* /usr/local/share
+
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/include/* /usr/local/include
+COPY install/tk9-x86_64-redhat-linux-rhel8-shared-9.0.1/include/* /usr/local/include

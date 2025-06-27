@@ -9,12 +9,12 @@ proc getEnv {name default} {
         } else {
             return $::env($name)
         }
-        
+
     } on error {msg options} {
-        return $default 
+        return $default
     }
-    
-    
+
+
 }
 
 proc hasArg name {
@@ -30,7 +30,9 @@ set tcl.version [info patchlevel]
 set out.dir ./[getEnv OUTDIR "dist"]
 set app.bin ./[getEnv NAME "tclkit-${tcl.version}"]
 
-set libs.stdTcl true
+set mode.noStdlib [hasArg noStdlib]
+
+
 
 set mode.extract [hasArg extract]
 set mode.continue [hasArg continue]
@@ -47,6 +49,7 @@ puts "TCL Kit name=${app.bin}"
 puts "TCL Kit version=${tcl.version}"
 puts "Extract Mode=${mode.extract}"
 puts "Continue Mode=${mode.continue}"
+puts "Skip Stdlib=${mode.noStdlib}"
 puts "Base Exe=$exe_path"
 
 if {$exe_path eq ""} {
@@ -72,13 +75,15 @@ if {![file exists ${out.dir}]} {
     file mkdir ${out.dir}
 }
 
-file copy -force $tcl_library [file join ${out.dir} tcl_library]
+puts "TCL Lib: $tcl_library"
+file copy -force $tcl_library [file join ${out.dir} ]
 if {![catch {set tk_library}]} {
+    puts "Copying tk_lib from $tk_library to [file join ${out.dir} tk_library]"
     file copy -force $tk_library [file join ${out.dir} tk_library]
 }
 
 ## Add TCL standard libraries
-if {${libs.stdTcl}} {
+if {!${mode.noStdlib}} {
 
      puts "- Adding TCL Standard libraries from ${tcl.home}"
     foreach libDir [glob -type d ${tcl.home}/lib/*] {
@@ -87,14 +92,14 @@ if {${libs.stdTcl}} {
         # IF target dir exists, copy source content into target dir to avoid errors
         if {[file exists $targetDir]} {
             foreach __f [glob -types {d f l} $libDir/*] {
-                puts "-- Copying ${__f} to $targetDir"
-                file copy  -force ${__f} $targetDir/
+                #puts "-- Copying ${__f} to $targetDir"
+                catch {file copy  -force ${__f} $targetDir/}
             }
         } else {
             file copy  -force $libDir $targetDir
         }
         #file copy $libDir [file join ${out.dir} tcl_library]
-        
+
     }
 }
 
@@ -106,6 +111,9 @@ if {${libs.stdTcl}} {
 ## Package ############
 ######################
 if {!${mode.extract}} {
+    puts "Creating kit: ${app.bin} in [pwd]"
     zipfs mkimg ${app.bin} ${out.dir} ${out.dir} "" $exe_path
-    puts "TCL Kit created: ${app.bin} in [pwd]"
+
 }
+
+exit

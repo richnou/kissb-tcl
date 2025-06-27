@@ -13,7 +13,7 @@ plugins:
   - git-committers:
       repository: richnou/kissb-tcl
       branch: main
-  - awesome-pages
+  - awesome-nav
   - include-markdown
   - mkdocstrings
   - glightbox
