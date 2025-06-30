@@ -325,6 +325,14 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
     }
 }
 
+vars.define crictl.version 3.3.1
+@ crictl.download {
+
+    # Require CriTCL
+    files.inDirectory ${::buildDir} {
+        getSourceFromTar ./critcl-${::crictl.version}/build.tcl critcl-${::crictl.version}.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/${::crictl.version}.tar.gz
+    }
+}
 
 ####################################
 ####################################$
@@ -565,7 +573,15 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
 }
 
-@ {dist1.gtktk.build "Build for Gtktk theme"} {
+@ {dist1.build.image.tcltk} {
+
+    # Prepare builder image
+    files.inDirectory $::buildDir/ {
+        builder.container.image.build [vars.get kissb.projectFolder]/Dockerfile.builder-tcltk9 rleys/kissb-builderwithtcltk9:latest -quiet
+    }
+}
+
+@ {dist1.gtktk.build "Build for Gtktk theme"} : dist1.build.image.tcltk {
     # https://github.com/Geballin/gtkTtk
 
     set version  0.9
@@ -583,8 +599,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
         set installPrefix   install/gtkTtk-${version}-${::build.targetString}-tk${::tcl.version.minor}
         files.requireOrRefresh $installPrefix/gtkTtk${version}/libgtkTtk0.9.so gtktk {
 
-            # Prepare builder image
-            builder.container.image.build [vars.get kissb.projectFolder]/Dockerfile.builder-tcltk9 rleys/kissb-builderwithtcltk9:latest
+            > dist1.build.image.tcltk
 
 
             builder.container.image.run rleys/kissb-builderwithtcltk9 {
@@ -598,20 +613,64 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
             }
         }
+    }
+}
 
 
+
+vars.define tdom.version 0.9.6
+@ {dist1.tdom.build "Build tdom"} : dist1.build.image.tcltk {
+
+
+
+
+    set configArgs      --host=${::build.host}
+    set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
+    set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
+
+    set installPrefix   install/tdom-${::build.targetString}-tcl${::tcl.version.minor}-${::tdom.version}
+
+    files.inDirectory $::buildDir/ {
+
+
+        # Get Sources from tarball
+        files.require tdom-${::tdom.version}-src {
+            files.downloadOrRefresh http://tdom.org/downloads/tdom-${::tdom.version}-src.tgz tdom-archive
+            files.extract tdom-${::tdom.version}-src.tgz
+        }
+
+        # Build if necessary
+        files.requireOrRefresh $installPrefix/lib/tdom${::tdom.version}/tdom.tcl tdom {
+
+            builder.container.image.run rleys/kissb-builderwithtcltk9 {
+                #tclsh <<< 'puts [lindex auto_path end]'
+                pushd tdom-${::tdom.version}-src
+                ./configure --enable-64bit   --host=${::build.host} --exec-prefix=/build/$installPrefix --prefix=/build/$installPrefix --with-tcl=/build/$tclPrefix/lib
+                make clean
+                make install
+
+            }
+
+        }
 
 
 
 
 
     }
-
-
-
 }
 
+@ {dist1.tdom.build.all "Build tdom"} {
 
+    >> dist1.tdom.build
+
+    buildSetMingw
+
+    >> dist1.tdom.build
+
+    buildReset
+
+}
 
 @ {dist1.build "Build DIST1 Packages"} {
 
@@ -623,6 +682,8 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
     > dist1.tclx.build
     > dist1.awthemes.build
     > dist1.gtktk.build
+    > dist1.tdom.build.all
+    > crictl.download
 
 }
 
@@ -630,6 +691,7 @@ vars.define dist1.release [vars.get release.tag]
 
 @ {dist1.package "Create a DIST1 Package"} {
 
+     
     > dist1.build
 
 
@@ -637,35 +699,44 @@ vars.define dist1.release [vars.get release.tag]
     ## For Dist Kit, use the archive folder lib/ as source of additional libraries
     files.inDirectory ${::buildDir}/dist/tcl9-dist1 {
 
-
-
-
-        set distinstallPrefix tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        set distinstallPrefix   tcl9-dist1-${::build.targetString}-${::tcl.version.minor}-${::dist1.release}
+        set distinstallPath     [file normalize $distinstallPrefix]
         files.requireOrRefresh [file tail $distinstallPrefix].tar.gz  dist1-package {
 
             files.delete *.tar.gz
             files.delete $distinstallPrefix
             files.mkdir $distinstallPrefix
 
+            # Copy all packages
             files.withGlobAll {
-            ../../install/tcl9-*linux*static*/*
-            ../../install/tk9-*linux*shared*/*
-            ../../install/tk9-*linux*static*/*
-            ../../install/tcllib-*linux*/*
-            ../../install/tklib-*linux*/*
-            ../../install/tcltls-*linux*/*
-            ../../install/tclx-*linux*/*} {
+            ../../install/tcl9-*linux*static*9.0.1/*
+            ../../install/tk9-*linux*shared*9.0.1/*
+            ../../install/tk9-*linux*static*9.0.1/*
+            ../../install/tcllib-*linux*2.0/*
+            ../../install/tklib-*linux*0.9/*
+            ../../install/tcltls-*linux*2.0b1/*
+            ../../install/tclx-*linux*8.6.3/*
+            ../../install/tdom-*linux*0.9.6/*} {
                 log.info "Copying $file into $distinstallPrefix"
                 exec.run cp -Rf $file $distinstallPrefix/
 
             }
             files.withGlobAll {
-                ../../install/awthemes*/
+                ../../install/awthemes*10.4.0/
                 ../../install/gtkTtk-*linux*/*} {
                 log.info "Copying $file into $distinstallPrefix"
                 exec.run cp -Rf $file $distinstallPrefix/lib
 
             }
+
+            # Install CriCTL
+            files.inDirectory ${::buildDir} {
+                builder.container.image.run rleys/kissb-tcl9builder {
+                    pushd critcl-${::crictl.version}
+                    /build/dist/tcl9-dist1/$distinstallPrefix/bin/tclsh9.0 build.tcl install
+                }
+            }
+
             files.compressDir $distinstallPrefix [file tail $distinstallPrefix].tar.gz
         }
 
@@ -680,12 +751,13 @@ vars.define dist1.release [vars.get release.tag]
             files.mkdir $distinstallPrefix
 
             files.withGlobAll {
-            ../../install/tcl9-*mingw*static*/*
-            ../../install/tk9-*mingw*shared*/*
-            ../../install/tk9-*mingw*static*/*
-            ../../install/tcllib-*linux*/*
-            ../../install/tklib-*linux*/*
-            ../../install/tclx-*mingw*/*} {
+            ../../install/tcl9-*mingw*static*9.0.1/*
+            ../../install/tk9-*mingw*shared*9.0.1/*
+            ../../install/tk9-*mingw*static*9.0.1/*
+            ../../install/tcllib-*linux*2.0/*
+            ../../install/tklib-*linux*0.9/*
+            ../../install/tclx-*mingw*8.6.3/*
+            ../../install/tdom-*mingw*0.9.6/*} {
                 log.info "Copying $file into $distinstallPrefix"
                 exec.run cp -Rf $file $distinstallPrefix/
 

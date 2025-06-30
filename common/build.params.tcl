@@ -9,7 +9,7 @@ builder.container.init
 
 
 vars.define variants  {static shared}
-vars.define buildDir .kb/build
+vars.define buildDir [file normalize .kb/build]
 
 vars.define tcl.version.major 9.0
 vars.define tcl.version.minor 9.0.1
