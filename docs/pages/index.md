@@ -24,6 +24,27 @@ Packages for Linux distributions are not provided but enough options are availab
 - Single file interpreters (Kit)
 - [TCL Wrapper script](#tcltk-wrapper) (tclshw or wishw) that will download a local TCL Kit, in the same fashion as tools like Maven or Gradle Wrapper.
 
+## Release: TCL 9.0.2 / 250610
+
+This Release uses TCL 9.0.2 as baseline Version and provides following packages:
+
+| Package | Version  | Platform | Download |
+|----|----| ------|--------|
+|TCL9 shared   | 9.0.2 | RHEL8          | {{makeS3Links(s3.tcl902_251006+"/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.2.tar.gz")}} |
+|TCL9 static   | 9.0.2 | RHEL8          | {{makeS3Links(s3.tcl902_251006+"/tcl9-x86_64-redhat-linux-rhel8-static-9.0.2.tar.gz")}}         |
+|TCL9 shared   | 9.0.2 | Mingw32 Win64  | {{makeS3Links(s3.tcl902_251006+"/tcl9-x86_64-w64-mingw32-win64-shared-9.0.2.zip")}}  |
+|TCL9 static   | 9.0.2 | Mingw32 Win64  | {{makeS3Links(s3.tcl902_251006+"/tcl9-x86_64-w64-mingw32-win64-static-9.0.2.zip")}}  |
+|TK9 shared    | 9.0.2 | RHEL8          | {{makeS3Links(s3.tcl902_251006+"/tk9-x86_64-redhat-linux-rhel8-shared-9.0.2.tar.gz")}}  |
+|TK9 static    | 9.0.2 | RHEL8          | {{makeS3Links(s3.tcl902_251006+"/tk9-x86_64-redhat-linux-rhel8-static-9.0.2.tar.gz")}} |
+|TK9 shared    | 9.0.2 | Mingw32 Win64  | {{makeS3Links(s3.tcl902_251006+"/tk9-x86_64-w64-mingw32-win64-shared-9.0.2.zip")}}  |
+|TK9 static    | 9.0.2 | Mingw32 Win64  | {{makeS3Links(s3.tcl902_251006+"/tk9-x86_64-w64-mingw32-win64-static-9.0.2.zip")}} |
+|TCL9 KIT      | 9.0.2 | RHEL8          | {{makeS3Links(s3.tcl902_251006+"/tclkit9-x86_64-redhat-linux-rhel8-9.0.2")}}         |
+|TCL9 KIT      | 9.0.2 | Mingw32 Win64  |  {{makeS3Links(s3.tcl902_251006+"/tclkit9-x86_64-w64-mingw32-win64-9.0.2.exe")}} |
+|TK9 KIT       | 9.0.2 | RHEL8          |  {{makeS3Links(s3.tcl902_251006+"/tkkit9-x86_64-redhat-linux-rhel8-9.0.2")}}        |
+|TK9 KIT Light | 9.0.2 | RHEL8          |  {{makeS3Links(s3.tcl902_251006+"/tkkit9-x86_64-redhat-linux-rhel8-light-9.0.2")}}        |
+|TK9 KIT       | 9.0.2 | Mingw32 Win64  |  {{makeS3Links(s3.tcl902_251006+"/tkkit9-x86_64-w64-mingw32-win64-9.0.2.exe")}} |
+|TK9 KIT Light | 9.0.2 | Mingw32 Win64  | {{makeS3Links(s3.tcl902_251006+"/tkkit9-x86_64-w64-mingw32-win64-light-9.0.2.exe")}}  |
+
 ## Release: TCL 9.0.1 / 250501
 
 This Release uses TCL 9.0.1 as baseline Version and provides following packages:

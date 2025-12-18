@@ -1,11 +1,15 @@
 FROM opensuse/leap:latest
 
+
+ARG tclmajor=9.0
+ARG tclminor=9.0.2
+
 ## TCL installation
-COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1            /install-tcl
-COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/bin/*      /usr/local/bin
-COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/lib/*      /usr/local/lib
-COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/share/*    /usr/local/share
-COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-9.0.1/include/*  /usr/local/include
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-$tclminor            /install-tcl
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-$tclminor/bin/*      /usr/local/bin
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-$tclminor/lib/*      /usr/local/lib
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-$tclminor/share/*    /usr/local/share
+COPY install/tcl9-x86_64-redhat-linux-rhel8-shared-$tclminor/include/*  /usr/local/include
 
 ## Add Packages
 RUN zypper -n install rlwrap

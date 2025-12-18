@@ -9,6 +9,10 @@ s3:
   tcl901_dist1_250627: https://kissb.s3.de.io.cloud.ovh.net/tcl9/dist1/250627
   tcl901_dist1_250630: https://kissb.s3.de.io.cloud.ovh.net/tcl9/dist1/250630
   tcl901_dist1_current: 250630
+  tcl902: https://kissb.s3.de.io.cloud.ovh.net/tcl9/9.0.2
+  tcl902_251006: https://kissb.s3.de.io.cloud.ovh.net/tcl9/9.0.2/251006
+  tcl902_dist1: https://kissb.s3.de.io.cloud.ovh.net/tcl9/dist1
+  tcl902_dist1_250610: https://kissb.s3.de.io.cloud.ovh.net/tcl9/dist1/250610
 images:
   tcl9_current_shared: rleys/kissb-tclsh9-shared:latest
   tcl9_current_static: rleys/kissb-tclsh9-static:latest

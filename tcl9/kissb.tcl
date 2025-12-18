@@ -7,7 +7,7 @@ source ../common/build.params.tcl
 
 # Set for TCL9
 vars.set tcl.version.major 9.0
-vars.set tcl.version.minor 9.0.1
+vars.set tcl.version.minor 9.0.2
 
 
 # Prepare builder image
@@ -17,32 +17,21 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 @ {tcl9.build.all "Build TCL9 for Linux and Win64 Platforms (Mingw)"} {
 
     # Unix Build
-    > tcl.build.generic
+    > tcl9.build.unix
 
-    # Windows Build
-    vars.set build.host         x86_64-w64-mingw32
-    vars.set build.cc           ${::build.host}-gcc
-    vars.set build.os           win64
-    vars.set build.targetString ${::build.host}-${::build.os}
-
-    > tcl.build.generic
-
-    vars.revert build.host build.cc build.os build.targetString
+    > tcl9.build.win
 
 }
 
-@ {tk9.build.win} {
-
-    buildSetMingw
-    > tk.build.generic
-    buildReset
-
-}
-
-@ {tk9.build.all} {
+@ {tcl9.build.unix "Build TCL9 for Linux"} {
 
     # Unix Build
-    > tk.build.generic
+    > tcl.build.generic
+
+}
+
+@ {tcl9.build.win "Build TCL9 for Win64 Platforms (Mingw)"} {
+
 
     # Windows Build
     vars.set build.host         x86_64-w64-mingw32
@@ -50,10 +39,13 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
     vars.set build.os           win64
     vars.set build.targetString ${::build.host}-${::build.os}
 
-    > tk.build.generic
+    > tcl.build.generic
 
     vars.revert build.host build.cc build.os build.targetString
+
 }
+
+
 
 
 @ {tcl9.package "Creates tarball and images for tcl9"}  {
@@ -68,7 +60,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
         refresh.with tcl9-package { files.delete *}
 
         # tar ball or zip all produced installs
-        files.withGlobAll ../../install/tcl9-* {
+        files.withGlobAll ../../install/tcl9-*-${::tcl.version.minor}* {
 
             log.info "Packing ${file}"
             set archName [string map {install- "" tcl tcl9} [file tail $file]]
@@ -84,7 +76,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
         # Release
         kissb.args.contains --release {
-            files.withGlobFiles [list tcl*.tar.gz  tcl*.zip] {
+            files.withGlobFiles [list tcl*-${::tcl.version.minor}.tar.gz  tcl*-${::tcl.version.minor}.zip] {
                 log.info "Uploading [file tail $file] to S3..."
                 s3copy $file tcl9/${::tcl.version.minor}/${::release.tag}
                 #rclone.run copy -P --s3-acl=public-read $file ovhs3:kissb/tcl9/${::tcl.version.minor}/
@@ -105,7 +97,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
         getSourceFromTar ./critcl-3.3.1/build.tcl critcl-3.3.1.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/3.3.1.tar.gz
 
         foreach variant $::variants {
-            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:latest
+            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:${::tcl.version.minor}
             #docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant-dev  rleys/kissb-tclsh9-${::tcl.version.minor}-$variant-rocky8-dev:${::tcl.version.minor}
         }
     }
@@ -113,17 +105,17 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
     ## Push to docker
     kissb.args.contains --release {
 
-        builder.container.image.push  rleys/kissb-tclsh9-static:latest docker.io/rleys/kissb-tclsh9-static:latest
-        builder.container.image.push  rleys/kissb-tclsh9-shared:latest docker.io/rleys/kissb-tclsh9-shared:latest
+        builder.container.image.push  rleys/kissb-tclsh9-static:${::tcl.version.minor} docker.io/rleys/kissb-tclsh9-static:${::tcl.version.minor}
+        builder.container.image.push  rleys/kissb-tclsh9-shared:${::tcl.version.minor} docker.io/rleys/kissb-tclsh9-shared:${::tcl.version.minor}
 
-        builder.container.image.push  rleys/kissb-tclsh9-static:latest docker.io/rleys/kissb-tclsh9-static:${::tcl.version.minor}-${::release.tag}
-        builder.container.image.push  rleys/kissb-tclsh9-shared:latest docker.io/rleys/kissb-tclsh9-shared:${::tcl.version.minor}-${::release.tag}
 
-        return
-        docker.push  rleys/kissb-tclsh9-static:${::tcl.version.minor}
-        docker.push  rleys/kissb-tclsh9-shared:${::tcl.version.minor}
-        docker.push  rleys/kissb-tclsh9-static-rocky8-dev:${::tcl.version.minor}
-        docker.push  rleys/kissb-tclsh9-shared-rocky8-dev:${::tcl.version.minor}
+        builder.container.image.push  rleys/kissb-tclsh9-static:${::tcl.version.minor} docker.io/rleys/kissb-tclsh9-static:${::tcl.version.minor}-${::release.tag}
+        builder.container.image.push  rleys/kissb-tclsh9-shared:${::tcl.version.minor} docker.io/rleys/kissb-tclsh9-shared:${::tcl.version.minor}-${::release.tag}
+
+        builder.container.image.push  rleys/kissb-tclsh9-static:${::tcl.version.minor} docker.io/rleys/kissb-tclsh9-static:latest
+        builder.container.image.push  rleys/kissb-tclsh9-shared:${::tcl.version.minor} docker.io/rleys/kissb-tclsh9-shared:latest
+
+
     }
 
 }
@@ -141,12 +133,12 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
         refresh.with tcl9-kit { files.delete *}
 
-        files.withGlobAll ../../install/tcl9-*static* {
+        files.withGlobAll ../../install/tcl9-*static*-${::tcl.version.minor}* {
 
             log.info "Creating KIT for: ${file}"
             set kitName [string map {tcl9 tclkit9 -static ""} [file tail $file]]
 
-            if {[string match *x86_64-w64-mingw32* $file] && [os.isLinuxWSL]} {
+            if {[string match *x86_64-w64-mingw32* $file] && ([os.isLinuxWSL] || [os.isLinux])} {
                 log.info "Creating Win64 KIT"
 
                 files.requireOrRefresh ${kitName}.exe tcl9-kit {
@@ -164,13 +156,40 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
         ## Release
         kissb.args.contains --release {
-            files.withGlobFiles [list *kit*] {
+            files.withGlobFiles [list *kit*-${::tcl.version.minor}*] {
                 log.info "Uploading [file tail $file] to S3..."
                 s3copy $file tcl9/${::tcl.version.minor}/${::release.tag}
                 #rclone.run copy --dry-run -v -P --s3-acl=public-read $file ovhs3:kissb/
             }
         }
     }
+}
+
+
+@ {tk9.build.win} {
+
+    buildSetMingw
+    > tk.build.generic
+    buildReset
+
+}
+
+@ {tk9.build.all} {
+
+    # Unix Build
+    > tk.build.generic
+
+    # Windows Build
+    #vars.set build.host         x86_64-w64-mingw32
+    #vars.set build.cc           ${::build.host}-gcc
+    #vars.set build.os           win64
+    #vars.set build.targetString ${::build.host}-${::build.os}
+
+    #> tk.build.generic
+
+    #vars.revert build.host build.cc build.os build.targetString
+
+    > tk9.build.win
 }
 
 
@@ -186,7 +205,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
         refresh.with tk9-package { files.delete *}
 
         # tar ball or zip all produced installs
-        files.withGlobAll ../../install/tk9-* {
+        files.withGlobAll ../../install/tk9-*-${::tcl.version.minor}* {
 
             log.info "Packing ${file}"
             set archName [string map {install- "" tk tk9} [file tail $file]]
@@ -205,7 +224,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
         ## Release
         kissb.args.contains --release {
-            files.withGlobFiles [list tk*.tar.gz  tk*.zip] {
+            files.withGlobFiles [list tk*-${::tcl.version.minor}*.tar.gz  tk*-${::tcl.version.minor}*.zip] {
                 log.info "Uploading [file tail $file] to S3..."
                 s3copy $file tcl9/${::tcl.version.minor}/${::release.tag}
                 #rclone.run copy -P --s3-acl=public-read $file ovhs3:kissb/tcl9/${::tcl.version.minor}/
@@ -259,12 +278,12 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
         refresh.with tk9-kit { files.delete * }
 
-        files.withGlobAll ../../install/tk9-*static* {
+        files.withGlobAll ../../install/tk9-*static*-${::tcl.version.minor}* {
 
             log.info "Creating KIT for: ${file}"
 
 
-            if {[string match *x86_64-w64-mingw32* $file] && [os.isLinuxWSL]} {
+            if {[string match *x86_64-w64-mingw32* $file] && ([os.isLinuxWSL] || [os.isLinux])} {
                 log.info "Creating Win64 KIT"
 
 
@@ -304,7 +323,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
 
         ## Release
         kissb.args.contains --release {
-            files.withGlobFiles [list *kit*] {
+            files.withGlobFiles [list *kit*-${::tcl.version.minor}*] {
                 log.info "Uploading [file tail $file] to S3..."
                 s3copy $file tcl9/${::tcl.version.minor}/${::release.tag}
                 #rclone.run copy --dry-run -v -P --s3-acl=public-read $file ovhs3:kissb/
@@ -314,15 +333,7 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
     }
 
 
-    return
-    package require kissb.tcl9.kit
 
-    files.inDirectory $::buildDir/dist/tcl9 {
-        files.requireOrRefresh tclkit-${::tcl.version.minor} TCLKIT {
-            tcl9.kit.make -image rleys/kissb-wish9-static:${::tcl.version.minor}
-        }
-
-    }
 }
 
 vars.define crictl.version 3.3.1
@@ -483,10 +494,10 @@ vars.define crictl.version 3.3.1
         set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
 
         #set buildImage
-        files.requireOrRefresh install-tcltls/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
+        files.requireOrRefresh $installPrefix/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
 
             files.delete $installPrefix/
-            getSourceFromTar ${baseName}/ChangeLog ${baseName}.tar.gz "https://core.tcl-lang.org/tcltls/tarball/e19f6b3f18/${baseName}.tar.gz"
+            getSourceFromTar ${baseName}/ChangeLog ${baseName}.tar.gz "https://core.tcl-lang.org/tcltls/tarball/${tclTLSChecking}/${baseName}.tar.gz"
 
             # Get LibreSSL
             #files.require libressl-x86_64-linux-rhel8-4.0.0/lib/libssl.so {
@@ -691,7 +702,7 @@ vars.define dist1.release [vars.get release.tag]
 
 @ {dist1.package "Create a DIST1 Package"} {
 
-     
+
     > dist1.build
 
 
@@ -857,6 +868,7 @@ vars.define dist1.release [vars.get release.tag]
 ## Signing ####
 
 vars.define sign.defaultKey "E24253BA23A2452F"
+vars.define sign.release.tag 251006
 
 proc signSha256File file {
 
@@ -868,12 +880,13 @@ proc signSha256File file {
 
     files.inDirectory ${::buildDir}/sign {
 
-        set basePath tcl9/9.0.1/250501
+        set basePath tcl9/${::tcl.version.minor}/${::sign.release.tag}
         set baseUrl https://kissb.s3.de.io.cloud.ovh.net/$basePath
         foreach file [s3List $basePath --exclude *.sha256*] {
             log.info "Signing $file"
 
-            files.requireOrRefresh ${file}.sha256.asc sign-tcl9 {
+            set checksumFile ${file}.sha256
+            files.requireOrRefresh ${checksumFile}.asc sign-tcl9 {
 
                     ## Get Package
                 set downloadedFile [files.downloadOrRefresh $baseUrl/$file sign]
