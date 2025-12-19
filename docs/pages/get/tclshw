@@ -8,8 +8,8 @@
 ## KISSB-TCL Wrapper script to download a TCL9 distribution and run it in a local folder
 
 ## Specify versions here
-tclversion=9.0.1 
-release=250501
+tclversion=9.0.3
+release=251218
 
 
 tclInstallFolder=.tcl/binaries/${tclversion}-${release}
