@@ -1,6 +1,14 @@
+
+
+
 FROM rleys/kissb-tcl9builder:latest
 
-COPY install/tcl9-x86_64-redhat-linux-rhel8-static-9.0.1 /install-tcl
+
+ARG tclmajor=9.0
+ARG tclminor=9.0.2
+
+
+COPY install/tcl9-x86_64-redhat-linux-rhel8-static-$tclminor  /install-tcl
 RUN cd /install-tcl/bin && ln -s tclsh9.0 tclsh
 
 # Critcl

@@ -7,7 +7,7 @@ source ../common/build.params.tcl
 
 # Set for TCL9
 vars.set tcl.version.major 9.0
-vars.set tcl.version.minor 9.0.2
+vars.set tcl.version.minor 9.0.3
 
 
 # Prepare builder image
@@ -97,7 +97,8 @@ builder.container.image.build Dockerfile.builder rleys/kissb-tcl9builder:latest
         getSourceFromTar ./critcl-3.3.1/build.tcl critcl-3.3.1.tar.gz https://github.com/andreas-kupries/critcl/archive/refs/tags/3.3.1.tar.gz
 
         foreach variant $::variants {
-            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:${::tcl.version.minor}
+            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant      rleys/kissb-tclsh9-$variant:${::tcl.version.minor} --build-arg tclminor=${::tcl.version.minor}
+            builder.container.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant-dev     rleys/kissb-tclsh9-$variant-rocky8-dev:${::tcl.version.minor} --build-arg tclminor=${::tcl.version.minor}
             #docker.image.build ${::kissb.projectFolder}/Dockerfile.tclsh9-$variant-dev  rleys/kissb-tclsh9-${::tcl.version.minor}-$variant-rocky8-dev:${::tcl.version.minor}
         }
     }
@@ -483,21 +484,24 @@ vars.define crictl.version 3.3.1
 
 
     set tlcTLSVersion 1.7.22
-    set tclTLSChecking e19f6b3f18
+    set tclTLSChecking 651e6cb534
     set baseName tcltls-${tclTLSChecking}
 
     files.inDirectory ${::buildDir} {
 
 
-        set installPrefix   install/tcltls-${::build.targetString}-tcl${::tcl.version.minor}-2.0b1
+        set installPrefix   install/tcltls-${::build.targetString}-tcl${::tcl.version.minor}-2.0b2
         set tclPrefix       install/tcl9-${::build.targetString}-shared-${::tcl.version.minor}
         set tclSh           [expr  {"${::build.host}" eq "x86_64-w64-mingw32" ? "tclsh90.exe": "tclsh9.0"}]
 
         #set buildImage
-        files.requireOrRefresh $installPrefix/lib/tls2.0b1/libtcl9tls2.0b1.so TCLTLS {
+        files.requireOrRefresh $installPrefix/lib/tls2.0b2/libtcl9tls2.0b2.so TCLTLS {
 
             files.delete $installPrefix/
-            getSourceFromTar ${baseName}/ChangeLog ${baseName}.tar.gz "https://core.tcl-lang.org/tcltls/tarball/${tclTLSChecking}/${baseName}.tar.gz"
+            
+            getSourceFromTar ${baseName}/ChangeLog tcltls-2.0b2.tar.gz "https://core.tcl-lang.org/tcltls/uv/tcltls-2.0b2.tar.gz"
+
+            #getSourceFromTar ${baseName}/ChangeLog ${baseName}.tar.gz "https://core.tcl-lang.org/tcltls/tarball/${tclTLSChecking}/${baseName}.tar.gz"
 
             # Get LibreSSL
             #files.require libressl-x86_64-linux-rhel8-4.0.0/lib/libssl.so {
@@ -588,7 +592,7 @@ vars.define crictl.version 3.3.1
 
     # Prepare builder image
     files.inDirectory $::buildDir/ {
-        builder.container.image.build [vars.get kissb.projectFolder]/Dockerfile.builder-tcltk9 rleys/kissb-builderwithtcltk9:latest -quiet
+        builder.container.image.build [vars.get kissb.projectFolder]/Dockerfile.builder-tcltk9 rleys/kissb-builderwithtcltk9:latest -q
     }
 }
 
@@ -882,6 +886,8 @@ proc signSha256File file {
 
         set basePath tcl9/${::tcl.version.minor}/${::sign.release.tag}
         set baseUrl https://kissb.s3.de.io.cloud.ovh.net/$basePath
+        
+        log.info "Listing files to sign in tcl9/${::tcl.version.minor}/${::sign.release.tag}"
         foreach file [s3List $basePath --exclude *.sha256*] {
             log.info "Signing $file"
 
